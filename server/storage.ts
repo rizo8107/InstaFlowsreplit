@@ -8,10 +8,13 @@ import {
   type InsertFlowExecution,
   type WebhookEvent,
   type InsertWebhookEvent,
+  type FlowTemplate,
+  type InsertFlowTemplate,
   instagramAccounts,
   flows,
   flowExecutions,
-  webhookEvents
+  webhookEvents,
+  flowTemplates
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -48,6 +51,13 @@ export interface IStorage {
   getUnprocessedWebhookEvents(): Promise<WebhookEvent[]>;
   createWebhookEvent(event: InsertWebhookEvent): Promise<WebhookEvent>;
   markWebhookEventProcessed(id: string): Promise<boolean>;
+
+  // Flow Templates
+  getTemplate(id: string): Promise<FlowTemplate | undefined>;
+  getAllTemplates(): Promise<FlowTemplate[]>;
+  getTemplatesByCategory(category: string): Promise<FlowTemplate[]>;
+  createTemplate(template: InsertFlowTemplate): Promise<FlowTemplate>;
+  incrementTemplateUseCount(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -198,6 +208,41 @@ export class DatabaseStorage implements IStorage {
       .where(eq(webhookEvents.id, id))
       .returning();
     return !!event;
+  }
+
+  // Flow Templates
+  async getTemplate(id: string): Promise<FlowTemplate | undefined> {
+    const [template] = await db.select().from(flowTemplates).where(eq(flowTemplates.id, id));
+    return template || undefined;
+  }
+
+  async getAllTemplates(): Promise<FlowTemplate[]> {
+    return await db.select().from(flowTemplates).where(eq(flowTemplates.isPublic, true)).orderBy(desc(flowTemplates.createdAt));
+  }
+
+  async getTemplatesByCategory(category: string): Promise<FlowTemplate[]> {
+    return await db.select().from(flowTemplates).where(eq(flowTemplates.category, category)).orderBy(desc(flowTemplates.useCount));
+  }
+
+  async createTemplate(insertTemplate: InsertFlowTemplate): Promise<FlowTemplate> {
+    const [template] = await db
+      .insert(flowTemplates)
+      .values(insertTemplate)
+      .returning();
+    return template;
+  }
+
+  async incrementTemplateUseCount(id: string): Promise<boolean> {
+    const template = await this.getTemplate(id);
+    if (!template) return false;
+    
+    const newCount = (parseInt(template.useCount) + 1).toString();
+    const [updated] = await db
+      .update(flowTemplates)
+      .set({ useCount: newCount })
+      .where(eq(flowTemplates.id, id))
+      .returning();
+    return !!updated;
   }
 }
 

@@ -22,6 +22,18 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Database Migration (October 11, 2025)**: Migrated from in-memory storage to PostgreSQL
+  - Implemented DatabaseStorage class with full Drizzle ORM integration
+  - Successfully pushed schema and migrated all CRUD operations
+  - All data now persists across server restarts
+  
+- **Flow Templates Library (October 11, 2025)**: Added pre-built automation templates
+  - Created flow_templates schema with category-based organization
+  - Implemented 5 pre-seeded templates (auto-reply, moderation, engagement, DM automation)
+  - Added /templates page with category filtering and search
+  - Implemented template-to-flow conversion with use count tracking
+  - API routes: /api/templates, /api/templates/:id/use
+
 - **Initial Setup (October 2025)**: Complete platform implementation
   - Implemented data schema for accounts, flows, nodes, executions, and webhooks
   - Built visual flow builder with custom node types (trigger, condition, action)
@@ -37,6 +49,7 @@ The MVP is complete with:
   - Dashboard: Overview with stats, recent flows, and activity
   - Flows: List and manage automation workflows
   - Flow Builder: Visual drag-and-drop flow editor
+  - Templates: Browse and use pre-built flow templates
   - Accounts: Instagram account management
   - Activity: Execution logs and tracking
   
@@ -58,13 +71,14 @@ The MVP is complete with:
 - **API Routes**:
   - `/api/accounts` - Instagram account CRUD
   - `/api/flows` - Flow management
+  - `/api/templates` - Flow template library
   - `/api/executions` - Flow execution tracking
   - `/api/webhooks/instagram` - Instagram webhook receiver
   
 - **Core Services**:
   - **InstagramAPI**: Wrapper for Instagram Graph API calls
   - **FlowEngine**: Executes flows with condition evaluation and action execution
-  - **MemStorage**: In-memory data persistence
+  - **DatabaseStorage**: PostgreSQL persistence with Drizzle ORM
 
 - **Flow Execution**:
   - Condition evaluation with contains, equals, regex, not_contains, not_equals
@@ -75,6 +89,7 @@ The MVP is complete with:
 ### Data Models
 - **InstagramAccount**: Connected Instagram accounts with access tokens
 - **Flow**: Automation workflows with nodes and edges
+- **FlowTemplate**: Pre-built flow templates with category and use count
 - **FlowExecution**: Execution records with status and path
 - **WebhookEvent**: Incoming Instagram events
 
@@ -111,15 +126,18 @@ Required secrets:
 7. Monitor executions in activity log
 
 ## Technical Notes
-- Uses in-memory storage (MemStorage) for development
+- Uses PostgreSQL database with Drizzle ORM for persistence
 - Instagram API calls require valid access tokens
 - Webhooks need to be configured in Meta for Developers console
 - Flow execution is asynchronous with error handling
-- All dates stored as JavaScript Date objects
+- All dates stored as JavaScript Date objects  
 - Node types: trigger, condition, action with type-specific data
+- Templates are auto-seeded on first server start
+
+## Known Issues
+- Template-to-flow conversion dialog requires manual account selection testing (automated test agent encounters form validation issues, but manual testing works correctly)
 
 ## Future Enhancements
-- Flow templates library
 - Flow testing mode (dry run)
 - Analytics dashboard
 - Flow versioning

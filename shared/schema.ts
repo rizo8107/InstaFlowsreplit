@@ -142,3 +142,24 @@ export const insertWebhookEventSchema = createInsertSchema(webhookEvents).omit({
 
 export type InsertWebhookEvent = z.infer<typeof insertWebhookEventSchema>;
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
+
+// Flow Templates
+export const flowTemplates = pgTable("flow_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // auto-reply, moderation, engagement, dm-automation
+  nodes: jsonb("nodes").notNull().$type<z.infer<typeof nodeSchema>[]>(),
+  edges: jsonb("edges").notNull().$type<z.infer<typeof edgeSchema>[]>(),
+  isPublic: boolean("is_public").notNull().default(true),
+  useCount: text("use_count").notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertFlowTemplateSchema = createInsertSchema(flowTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFlowTemplate = z.infer<typeof insertFlowTemplateSchema>;
+export type FlowTemplate = typeof flowTemplates.$inferSelect;

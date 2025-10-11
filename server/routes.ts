@@ -5,7 +5,8 @@ import {
   insertInstagramAccountSchema, 
   insertFlowSchema, 
   updateFlowSchema,
-  insertFlowExecutionSchema 
+  insertFlowExecutionSchema,
+  insertFlowTemplateSchema
 } from "@shared/schema";
 import { InstagramAPI } from "./instagram-api";
 import { FlowEngine } from "./flow-engine";
@@ -200,6 +201,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Flow Templates
+  app.get("/api/templates", async (req, res) => {
+    try {
+      const { category } = req.query;
+      const templates = category 
+        ? await storage.getTemplatesByCategory(category as string)
+        : await storage.getAllTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/templates/:id", async (req, res) => {
+    try {
+      const template = await storage.getTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/templates", async (req, res) => {
+    try {
+      const data = insertFlowTemplateSchema.parse(req.body);
+      const template = await storage.createTemplate(data);
+      res.json(template);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/templates/:id/use", async (req, res) => {
+    try {
+      console.log("Template use request:", { templateId: req.params.id, body: req.body });
+      const { accountId, name } = req.body;
+      const template = await storage.getTemplate(req.params.id);
+      
+      if (!template) {
+        console.error("Template not found:", req.params.id);
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      console.log("Creating flow from template:", template.name);
+      // Create a new flow from the template
+      const flow = await storage.createFlow({
+        accountId,
+        name: name || template.name,
+        description: `Based on template: ${template.name}`,
+        isActive: false,
+        nodes: template.nodes,
+        edges: template.edges,
+      });
+
+      console.log("Flow created:", flow.id);
+      // Increment template use count
+      await storage.incrementTemplateUseCount(req.params.id);
+
+      res.json(flow);
+    } catch (error: any) {
+      console.error("Template use error:", error);
+      res.status(400).json({ error: error.message });
     }
   });
 
