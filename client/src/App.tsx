@@ -13,6 +13,7 @@ import FlowBuilder from "@/pages/flow-builder";
 import Accounts from "@/pages/accounts";
 import ActivityPage from "@/pages/activity";
 import Templates from "@/pages/templates";
+import WebhookSetup from "@/pages/webhook-setup";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/flows/:id" component={FlowBuilder} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/templates" component={Templates} />
+      <Route path="/webhook-setup" component={WebhookSetup} />
       <Route path="/activity" component={ActivityPage} />
       <Route component={NotFound} />
     </Switch>

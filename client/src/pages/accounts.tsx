@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Instagram, Trash2, Power, PowerOff, ExternalLink } from "lucide-react";
+import { Plus, Instagram, Trash2, Power, PowerOff, ExternalLink, Webhook, Copy, Check } from "lucide-react";
 import type { InstagramAccount } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -33,12 +33,16 @@ import { useState } from "react";
 export default function Accounts() {
   const { toast } = useToast();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [newAccount, setNewAccount] = useState({
     username: "",
     instagramUserId: "",
     accessToken: "",
     profilePicture: "",
   });
+
+  // Get webhook URL from current domain
+  const webhookUrl = `${window.location.origin}/api/webhooks/instagram`;
 
   const { data: accounts, isLoading } = useQuery<InstagramAccount[]>({
     queryKey: ["/api/accounts"],
@@ -177,6 +181,78 @@ export default function Accounts() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Webhook Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Webhook className="w-5 h-5 text-primary" />
+            <CardTitle>Webhook Configuration</CardTitle>
+          </div>
+          <CardDescription>
+            Configure this webhook URL in Meta for Developers to receive Instagram events
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Webhook URL</Label>
+            <div className="flex gap-2">
+              <Input
+                value={webhookUrl}
+                readOnly
+                className="font-mono text-sm"
+                data-testid="input-webhook-url"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(webhookUrl);
+                  setCopiedWebhook(true);
+                  setTimeout(() => setCopiedWebhook(false), 2000);
+                  toast({
+                    title: "Copied!",
+                    description: "Webhook URL copied to clipboard",
+                  });
+                }}
+                data-testid="button-copy-webhook"
+              >
+                {copiedWebhook ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Setup Steps:</h4>
+              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>Deploy your app (click Publish button)</li>
+                <li>Copy the webhook URL above</li>
+                <li>Go to Meta for Developers console</li>
+                <li>Add webhook with verification token</li>
+                <li>Subscribe to events (comments, messages, etc.)</li>
+              </ol>
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Webhook Events:</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">Comments</Badge>
+                <Badge variant="outline">Messages</Badge>
+                <Badge variant="outline">Mentions</Badge>
+                <Badge variant="outline">Story Replies</Badge>
+              </div>
+              <a
+                href="/webhook-setup"
+                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                data-testid="link-webhook-guide"
+              >
+                View detailed setup guide
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Accounts Grid */}
       {isLoading ? (

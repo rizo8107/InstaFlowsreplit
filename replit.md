@@ -117,13 +117,20 @@ Required secrets:
 - **Interactions**: Hover elevations, smooth transitions, drag-and-drop
 
 ## User Workflow
-1. Connect Instagram account with Graph API token
-2. Create a new flow with trigger type (comment, DM, mention, story reply)
-3. Add condition nodes to filter events
-4. Add action nodes to respond or perform operations
-5. Connect nodes to define workflow logic
-6. Activate flow to start automation
-7. Monitor executions in activity log
+1. **Deploy the application** - Click Publish to make webhook accessible
+2. **Configure webhook** - Copy webhook URL from Accounts page, add to Meta for Developers
+3. **Connect Instagram account** - Add account with Graph API token
+4. **Create automation flow** - Use templates or build custom flow with trigger type
+5. **Add logic nodes** - Add condition nodes to filter events, action nodes to respond
+6. **Activate flow** - Toggle flow to active to start automation
+7. **Monitor executions** - View real-time execution logs in Activity page
+
+### Webhook Flow:
+1. Instagram sends event (comment, DM, mention) → `/api/webhooks/instagram`
+2. System finds active flows matching event type and account
+3. Flow engine executes flow with condition evaluation
+4. Actions performed via Instagram Graph API
+5. Execution logged with success/failure status
 
 ## Technical Notes
 - Uses PostgreSQL database with Drizzle ORM for persistence
