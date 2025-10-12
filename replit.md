@@ -43,7 +43,7 @@ The application is a full-stack TypeScript project, utilizing an Express.js back
 ## External Dependencies
 - **Instagram Graph API**: Core integration for managing Instagram accounts, sending messages, and performing actions.
   - **Webhook Subscriptions**: Uses `graph.instagram.com/v24.0/{instagram-account-id}/subscribed_apps` endpoint for automatic webhook subscription when accounts connect
-  - **Verify Token Storage**: Webhook verify token stored in database (app_settings table) with auto-sync from environment variables for production compatibility
+  - **Verify Token**: Webhook verify token is hardcoded as "zenthra" for all environments (preview and production) for simplicity and consistency
 - **Instagram Business Login OAuth**: Direct OAuth flow using instagram.com/oauth/authorize for secure Instagram account connection with long-lived access tokens (60-day validity).
 - **PostgreSQL**: Relational database for persistent storage.
 - **ReactFlow**: Library for the visual drag-and-drop flow builder.

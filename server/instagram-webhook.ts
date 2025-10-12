@@ -31,9 +31,8 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
   }
 
   private async getVerifyToken(): Promise<string> {
-    const { storage } = await import("./storage");
-    const dbSetting = await storage.getSetting("webhook_verify_token");
-    return dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || "";
+    // Hardcoded webhook verify token for all environments
+    return "zenthra";
   }
 
   /**

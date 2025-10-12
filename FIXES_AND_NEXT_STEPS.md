@@ -6,7 +6,7 @@
 Based on your logs, I can confirm:
 1. **Webhooks ARE being received** - Comments and DMs are coming through
 2. **Webhook verification IS working** - Meta successfully verifies your endpoint
-3. **Token system IS working** - Database-first with environment fallback
+3. **Token system IS simplified** - Hardcoded "zenthra" for all environments
 
 ### ❌ The Actual Problem
 ```
@@ -27,11 +27,11 @@ No account found for Instagram user ID: 17841403285682665
 - No account data is ever modified by incoming webhooks
 - **Result**: Data integrity protected, accounts must be properly connected via OAuth
 
-### 2. **Database Token Management** ✅
-- Webhook verify token now stored in database
-- Auto-syncs from environment variables on first access
-- Production and development both use same database
-- **Result**: Production webhook verification now works
+### 2. **Simplified Token Management** ✅
+- Webhook verify token is now hardcoded as "zenthra"
+- Works identically in all environments (preview and production)
+- No need to manage tokens in database or environment variables
+- **Result**: Webhook verification is simple and consistent
 
 ### 3. **Enhanced Logging** ✅
 Added detailed console logs to track:
@@ -78,7 +78,7 @@ If auto-subscription doesn't work, you'll see detailed errors in logs. Then manu
 2. **Select "Instagram"** as object type
 3. **Configure**:
    - Callback URL: `https://insta-flows-nirmal40.replit.app/api/webhooks/instagram`
-   - Verify Token: (get from your Accounts page)
+   - Verify Token: `zenthra` (hardcoded for all environments)
 4. **Subscribe to**:  comments, messages, mentions, story_insights, live_comments, message_reactions
 5. **Click "Verify and save"**
 
@@ -104,12 +104,12 @@ Check console logs for:
 ```
 🔐 Webhook Verification Request:
   Received Token: xyz789
-  Expected Token (from database): abc123
+  Expected Token (hardcoded): zenthra
   Tokens Match: false
 ❌ Webhook verification FAILED - token mismatch
 ```
 
-**Fix**: Make sure token in Meta Dashboard EXACTLY matches token in your app's database.
+**Fix**: Make sure you use "zenthra" (without quotes) as the verify token in Meta Dashboard.
 
 ### If Account Still Shows "No account found":
 
@@ -121,7 +121,8 @@ Check console logs for:
 
 | Issue | Status | Solution |
 |-------|--------|----------|
-| **Webhook verification in production** | ✅ FIXED | Token auto-syncs from env to database |
+| **Webhook verification** | ✅ FIXED | Hardcoded "zenthra" token for all environments |
+| **Data corruption bug** | ✅ FIXED | Removed auto-mutation of account IDs |
 | **Auto-subscription during OAuth** | ⚠️ NEEDS TESTING | Enhanced logging added to debug |
 | **Account not found in database** | ❌ ACTION NEEDED | Connect account via OAuth |
 | **Manual webhook setup** | ✅ WORKING | Webhooks are being received |
@@ -141,10 +142,10 @@ Check console logs for:
 
 ### Production Webhook Verification
 If Meta can't verify your production webhook:
-1. Check Replit Secrets has `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
-2. Login to production and copy token from Accounts page
-3. Paste EXACT token in Meta Dashboard
-4. Watch console logs for verification request
+1. Make sure you use "zenthra" as the verify token in Meta Dashboard
+2. No need to check environment variables - token is hardcoded
+3. Watch console logs for verification request to confirm token match
+4. If verification fails, double-check you typed "zenthra" correctly (no quotes, all lowercase)
 
 ### Auto-Subscription Not Working
 If webhooks don't auto-subscribe when connecting accounts:

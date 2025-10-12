@@ -384,20 +384,12 @@ export function registerRoutes(app: Express, storage: IStorage) {
   // Webhook Token Management
   app.get("/api/webhook-token", requireAuth, async (req, res) => {
     try {
-      // Check database first
-      let dbSetting = await storage.getSetting('webhook_verify_token');
-      
-      // If not in database but exists in env, auto-save to database for production
-      if (!dbSetting && process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN) {
-        await storage.setSetting('webhook_verify_token', process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN);
-        dbSetting = await storage.getSetting('webhook_verify_token');
-      }
-      
-      const token = dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+      // Hardcoded webhook verify token for all environments
+      const token = "zenthra";
       res.json({ 
-        token: token || null, 
-        exists: !!token,
-        source: dbSetting ? 'database' : (process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN ? 'environment' : 'none')
+        token: token, 
+        exists: true,
+        source: 'hardcoded'
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -406,12 +398,12 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
   app.post("/api/webhook-token/generate", requireAuth, async (req, res) => {
     try {
-      const crypto = await import('crypto');
-      const token = crypto.randomBytes(32).toString('hex');
+      // Return hardcoded token
+      const token = "zenthra";
       
       res.json({ 
         token,
-        message: "Token generated successfully. Click 'Save' to store it."
+        message: "Using hardcoded webhook token: zenthra"
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -420,17 +412,12 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
   app.post("/api/webhook-token/set", requireAuth, async (req, res) => {
     try {
-      const { token } = req.body;
-      
-      if (!token || typeof token !== 'string' || token.length < 16) {
-        return res.status(400).json({ error: "Invalid token. Must be at least 16 characters." });
-      }
-      
-      await storage.setSetting('webhook_verify_token', token);
+      // Token is hardcoded, but accept the request for backwards compatibility
+      const token = "zenthra";
       
       res.json({ 
         success: true,
-        message: "Webhook verify token saved successfully",
+        message: "Using hardcoded webhook token: zenthra",
         token
       });
     } catch (error: any) {
@@ -511,11 +498,10 @@ export function registerRoutes(app: Express, storage: IStorage) {
     console.log(`  Received Token: ${token}`);
     console.log(`  Challenge: ${challenge}`);
 
-    // Check database first, then fall back to env var
-    const dbSetting = await storage.getSetting('webhook_verify_token');
-    const verifyToken = dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+    // Hardcoded webhook verify token
+    const verifyToken = "zenthra";
     
-    console.log(`  Expected Token (from ${dbSetting ? 'database' : 'env'}): ${verifyToken}`);
+    console.log(`  Expected Token (hardcoded): ${verifyToken}`);
     console.log(`  Tokens Match: ${token === verifyToken}`);
 
     if (mode === "subscribe" && token === verifyToken) {
