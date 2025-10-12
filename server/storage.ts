@@ -10,11 +10,14 @@ import {
   type InsertWebhookEvent,
   type FlowTemplate,
   type InsertFlowTemplate,
+  type Contact,
+  type InsertContact,
   instagramAccounts,
   flows,
   flowExecutions,
   webhookEvents,
-  flowTemplates
+  flowTemplates,
+  contacts
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -60,6 +63,14 @@ export interface IStorage {
   getTemplatesByCategory(category: string): Promise<FlowTemplate[]>;
   createTemplate(template: InsertFlowTemplate): Promise<FlowTemplate>;
   incrementTemplateUseCount(id: string): Promise<boolean>;
+
+  // Contacts
+  getContact(id: string): Promise<Contact | undefined>;
+  getContactsByAccount(accountId: string): Promise<Contact[]>;
+  getAllContacts(): Promise<Contact[]>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: string, updates: Partial<Contact>): Promise<Contact | undefined>;
+  deleteContact(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -253,6 +264,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(flowTemplates.id, id))
       .returning();
     return !!updated;
+  }
+
+  // Contacts
+  async getContact(id: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+    return contact || undefined;
+  }
+
+  async getContactsByAccount(accountId: string): Promise<Contact[]> {
+    return await db.select().from(contacts).where(eq(contacts.accountId, accountId)).orderBy(desc(contacts.createdAt));
+  }
+
+  async getAllContacts(): Promise<Contact[]> {
+    return await db.select().from(contacts).orderBy(desc(contacts.createdAt));
+  }
+
+  async createContact(insertContact: InsertContact): Promise<Contact> {
+    const [contact] = await db
+      .insert(contacts)
+      .values(insertContact)
+      .returning();
+    return contact;
+  }
+
+  async updateContact(id: string, updates: Partial<Contact>): Promise<Contact | undefined> {
+    const [contact] = await db
+      .update(contacts)
+      .set(updates)
+      .where(eq(contacts.id, id))
+      .returning();
+    return contact || undefined;
+  }
+
+  async deleteContact(id: string): Promise<boolean> {
+    const result = await db.delete(contacts).where(eq(contacts.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

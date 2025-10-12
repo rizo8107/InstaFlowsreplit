@@ -1,4 +1,4 @@
-import { Home, Workflow, Instagram, Activity, Settings, Plus, Sparkles } from "lucide-react";
+import { Home, Workflow, Instagram, Activity, Settings, Plus, Sparkles, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +35,11 @@ const menuItems = [
     title: "Accounts",
     url: "/accounts",
     icon: Instagram,
+  },
+  {
+    title: "Contacts",
+    url: "/contacts",
+    icon: Users,
   },
   {
     title: "Activity",

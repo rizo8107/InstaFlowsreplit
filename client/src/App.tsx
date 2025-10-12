@@ -14,6 +14,7 @@ import Accounts from "@/pages/accounts";
 import ActivityPage from "@/pages/activity";
 import Templates from "@/pages/templates";
 import WebhookSetup from "@/pages/webhook-setup";
+import Contacts from "@/pages/contacts";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/templates" component={Templates} />
       <Route path="/webhook-setup" component={WebhookSetup} />
       <Route path="/activity" component={ActivityPage} />
+      <Route path="/contacts" component={Contacts} />
       <Route component={NotFound} />
     </Switch>
   );

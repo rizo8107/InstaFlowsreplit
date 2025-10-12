@@ -176,12 +176,15 @@ export default function FlowBuilder() {
     setSelectedNode(null);
   }, []);
 
-  const addNode = (type: string) => {
+  const addNode = (type: string, preConfig?: any) => {
     const newNode: Node = {
       id: `${type}-${Date.now()}`,
       type,
       position: { x: Math.random() * 400, y: Math.random() * 400 },
-      data: { label: `New ${type}` },
+      data: { 
+        label: `New ${type}`,
+        ...preConfig,
+      },
     };
     setNodes((nds) => [...nds, newNode]);
   };

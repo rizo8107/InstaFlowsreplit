@@ -168,3 +168,20 @@ export const insertFlowTemplateSchema = createInsertSchema(flowTemplates).omit({
 
 export type InsertFlowTemplate = z.infer<typeof insertFlowTemplateSchema>;
 export type FlowTemplate = typeof flowTemplates.$inferSelect;
+
+// Contacts
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull().references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+  instagramUserId: text("instagram_user_id").notNull(),
+  username: text("username").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertContact = z.infer<typeof insertContactSchema>;
+export type Contact = typeof contacts.$inferSelect;

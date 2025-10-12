@@ -613,6 +613,63 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  // Contacts
+  app.get("/api/contacts", async (req, res) => {
+    try {
+      const accountId = req.query.accountId as string | undefined;
+      const contacts = accountId 
+        ? await storage.getContactsByAccount(accountId)
+        : await storage.getAllContacts();
+      res.json(contacts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/contacts", async (req, res) => {
+    try {
+      const { accountId, instagramUserId, username } = req.body;
+      
+      if (!accountId || !instagramUserId || !username) {
+        return res.status(400).json({ error: "Account ID, Instagram user ID, and username are required" });
+      }
+
+      const contact = await storage.createContact({
+        accountId,
+        instagramUserId,
+        username,
+      });
+
+      res.json(contact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/contacts/:id", async (req, res) => {
+    try {
+      const contact = await storage.updateContact(req.params.id, req.body);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json(contact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/contacts/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteContact(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

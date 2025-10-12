@@ -23,6 +23,19 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Contacts Management & Enhanced Node Palette (October 12, 2025)**: Added contacts page and improved node palette
+  - **Contacts Page**: New page to store Instagram user contacts
+    - Store user ID and username for each contact
+    - Filter contacts by Instagram account
+    - Full CRUD operations (create, read, update, delete)
+    - Linked to Instagram accounts for organization
+  - **Enhanced Node Palette**: Improved usability with organized sections
+    - "Basic Nodes" section with descriptions (Trigger, If/Else, Action)
+    - "Quick Actions" section for commonly used pre-configured nodes
+    - Time Delay, Send DM, and Reply Comment as one-click additions
+    - Visual icons and color coding for better recognition
+  - **Edge Deletion Improved**: Delete button now always visible on edges (better UX)
+
 - **Additional Node Types & Edge Deletion (October 12, 2025)**: Enhanced flow builder with new capabilities
   - **Edge Deletion**: Added ability to delete connections between nodes
     - Custom edge component with hover-to-reveal delete button (X icon)
