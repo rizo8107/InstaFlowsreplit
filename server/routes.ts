@@ -405,6 +405,68 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  // Webhook Subscription Status
+  app.get("/api/webhook-status", requireAuth, async (req, res) => {
+    try {
+      const { webhookService } = await import('./instagram-webhook');
+      
+      // Get first account to check webhook status
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      
+      if (accounts.length === 0) {
+        return res.json({
+          configured: false,
+          message: "No Instagram accounts connected",
+        });
+      }
+      
+      const firstAccount = accounts[0];
+      const status = await webhookService.checkWebhookSubscription(
+        firstAccount.instagramUserId,
+        firstAccount.accessToken
+      );
+      
+      res.json({
+        ...status,
+        setupInstructions: webhookService.getSetupInstructions(),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/webhook-subscribe", requireAuth, async (req, res) => {
+    try {
+      const { webhookService } = await import('./instagram-webhook');
+      const { accountId } = req.body;
+      
+      if (!accountId) {
+        return res.status(400).json({ error: "Account ID required" });
+      }
+      
+      const account = await storage.getAccount(accountId);
+      
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      
+      const subscribed = await webhookService.subscribeToWebhooks(
+        account.instagramUserId,
+        account.accessToken
+      );
+      
+      res.json({
+        success: subscribed,
+        message: subscribed 
+          ? "Webhooks subscribed successfully" 
+          : "Manual webhook setup required. See setup instructions.",
+        setupInstructions: !subscribed ? webhookService.getSetupInstructions() : undefined,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Webhook handler
   app.get("/api/webhooks/instagram", async (req, res) => {
     const mode = req.query["hub.mode"];

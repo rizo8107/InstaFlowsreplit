@@ -5,6 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
+import { webhookService } from "./instagram-webhook";
 import { User as SelectUser } from "@shared/schema";
 
 declare global {
@@ -246,6 +247,22 @@ export function setupAuth(app: Express) {
           username: profileData.username,
           accessToken: finalToken,
         });
+      }
+
+      // Step 5: Automatically subscribe to webhooks (if not already configured)
+      try {
+        console.log("Checking/subscribing to Instagram webhooks...");
+        const subscribed = await webhookService.subscribeToWebhooks(igUserId, finalToken);
+        
+        if (subscribed) {
+          console.log("✅ Webhooks configured successfully");
+        } else {
+          console.log("⚠️ Webhook subscription needs manual setup");
+          console.log(webhookService.getSetupInstructions());
+        }
+      } catch (webhookError) {
+        console.error("Webhook subscription error (non-blocking):", webhookError);
+        // Don't fail the OAuth flow if webhook subscription fails
       }
 
       res.redirect("/accounts?success=true");
