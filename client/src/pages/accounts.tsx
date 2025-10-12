@@ -170,7 +170,11 @@ export default function Accounts() {
     },
   });
 
-  const { data: tokenData } = useQuery({
+  const { data: tokenData } = useQuery<{
+    token: string | null;
+    exists: boolean;
+    source: 'database' | 'environment' | 'none';
+  }>({
     queryKey: ["/api/webhook-token"],
   });
 
