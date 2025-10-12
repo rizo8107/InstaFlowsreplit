@@ -486,7 +486,7 @@ export default function FlowBuilder() {
                               {exec.triggerType}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(exec.executedAt).toLocaleTimeString()}
+                              {new Date(exec.createdAt).toLocaleTimeString()}
                             </span>
                           </div>
                         </CardContent>
@@ -519,7 +519,7 @@ export default function FlowBuilder() {
                         </div>
                         <div className="col-span-2">
                           <span className="text-muted-foreground">Executed:</span>{" "}
-                          {new Date(selectedExecution.executedAt).toLocaleString()}
+                          {new Date(selectedExecution.createdAt).toLocaleString()}
                         </div>
                       </div>
                     </div>
