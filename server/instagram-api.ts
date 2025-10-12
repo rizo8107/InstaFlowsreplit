@@ -158,21 +158,22 @@ export class InstagramAPI {
   }
 
   // Direct Messages
-  async sendDirectMessage(conversationId: string, message: string): Promise<any> {
+  async sendDirectMessage(recipientId: string, message: string): Promise<any> {
     try {
-      // Use conversation ID endpoint as per Instagram Graph API docs
-      const endpoint = `${GRAPH_API_BASE}/${conversationId}/messages`;
+      // Use Instagram Graph API v24.0 format: /<IG_ID>/messages with recipient.id
+      const endpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
       
-      console.log(`[InstagramAPI] Sending DM to conversation ${conversationId} via ${endpoint}`);
-      console.log(`[InstagramAPI] Request body:`, JSON.stringify({
-        message: { text: message },
-      }));
+      const requestBody = {
+        recipient: { id: recipientId },
+        message: { text: message }
+      };
+      
+      console.log(`[InstagramAPI] Sending DM to recipient ${recipientId} via ${endpoint}`);
+      console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
       
       const response = await axios.post(
         endpoint,
-        {
-          message: { text: message },
-        },
+        requestBody,
         {
           params: {
             access_token: this.accessToken,

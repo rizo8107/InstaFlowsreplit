@@ -51,9 +51,9 @@ export class FlowEngine {
     if (triggerData.message_id || triggerData.message_text) {
       variables.message_id = triggerData.message_id;
       variables.message_text = triggerData.message_text;
-      variables.user_id = triggerData.sender_id;
+      variables.sender_id = triggerData.sender_id; // Required for sending DMs
+      variables.user_id = triggerData.sender_id; // Alias for conditions
       variables.username = triggerData.sender_username; // May not always be available
-      variables.conversation_id = triggerData.conversation_id; // Required for sending DMs
     }
 
     // Mentions
@@ -158,18 +158,18 @@ export class FlowEngine {
         }
 
       case "send_dm":
-        if (this.context.variables.conversation_id && config.message) {
-          console.log(`[FlowEngine] Sending DM to conversation ${this.context.variables.conversation_id}: ${config.message}`);
+        if (this.context.variables.sender_id && config.message) {
+          console.log(`[FlowEngine] Sending DM to sender ${this.context.variables.sender_id}: ${config.message}`);
           try {
-            const result = await this.api.sendDirectMessage(this.context.variables.conversation_id, config.message);
+            const result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.message);
             console.log(`[FlowEngine] DM sent successfully, result:`, result);
-            return { success: true, action: "send_dm", conversation_id: this.context.variables.conversation_id, message: config.message, result };
+            return { success: true, action: "send_dm", sender_id: this.context.variables.sender_id, message: config.message, result };
           } catch (error: any) {
             console.error(`[FlowEngine] Failed to send DM:`, error);
             throw error;
           }
         } else {
-          const errorMsg = `Missing conversation_id or message for send_dm action (conversation_id: ${this.context.variables.conversation_id})`;
+          const errorMsg = `Missing sender_id or message for send_dm action (sender_id: ${this.context.variables.sender_id})`;
           console.log(`[FlowEngine] ${errorMsg}`);
           throw new Error(errorMsg);
         }
@@ -226,18 +226,18 @@ export class FlowEngine {
         }
 
       case "send_link":
-        if (this.context.variables.conversation_id && config.url) {
-          console.log(`[FlowEngine] Sending link to conversation ${this.context.variables.conversation_id}: ${config.url}`);
+        if (this.context.variables.sender_id && config.url) {
+          console.log(`[FlowEngine] Sending link to sender ${this.context.variables.sender_id}: ${config.url}`);
           try {
-            const result = await this.api.sendDirectMessage(this.context.variables.conversation_id, config.url);
+            const result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.url);
             console.log(`[FlowEngine] Link sent successfully, result:`, result);
-            return { success: true, action: "send_link", conversation_id: this.context.variables.conversation_id, url: config.url, result };
+            return { success: true, action: "send_link", sender_id: this.context.variables.sender_id, url: config.url, result };
           } catch (error: any) {
             console.error(`[FlowEngine] Failed to send link:`, error);
             throw error;
           }
         } else {
-          const errorMsg = `Missing conversation_id or url for send_link action (conversation_id: ${this.context.variables.conversation_id})`;
+          const errorMsg = `Missing sender_id or url for send_link action (sender_id: ${this.context.variables.sender_id})`;
           console.log(`[FlowEngine] ${errorMsg}`);
           throw new Error(errorMsg);
         }

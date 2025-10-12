@@ -25,11 +25,10 @@ The MVP is complete with:
 - **Complete Instagram Graph API v24.0 Compliance (October 12, 2025)**: Fixed all action nodes to match Instagram Graph API v24.0
   - **Updated API Base URL**: Changed from `graph.instagram.com` to `graph.instagram.com/v24.0`
   - **DM Actions Fixed**: 
-    - Updated endpoint from `/me/messages` to `/{conversation_id}/messages`
-    - Changed request format from `{recipient: {id}, message: {text}}` to `{message: {text}}`
-    - **CRITICAL**: Added conversation_id fetching from Instagram API (webhooks don't include it)
-    - Webhook handler now calls `getConversationIdBySenderId()` to fetch conversation_id
-    - Both `send_dm` and `send_link` now use conversation_id
+    - Updated endpoint to `/{instagram_user_id}/messages` (correct v24.0 format)
+    - Request format: `{recipient: {id: sender_id}, message: {text: "..."}}`
+    - Uses `sender_id` directly from webhook (no conversation_id needed)
+    - Both `send_dm` and `send_link` now use sender_id with recipient.id format
   - **All Comment Actions Enhanced**:
     - Reply to Comment: Proper error handling and result tracking
     - Delete Comment: Full error details and logging
@@ -155,7 +154,7 @@ Required secrets:
 ## Technical Notes
 - Uses PostgreSQL database with Drizzle ORM for persistence
 - Instagram API calls require valid access tokens with `instagram_business_manage_messages` and `instagram_business_manage_comments` scopes
-- **DM Actions**: Use `conversation_id` (not user_id) extracted from webhook events. API endpoint: `/{conversation_id}/messages` with body `{message: {text: "..."}}`
+- **DM Actions**: Use `sender_id` directly from webhook events. API endpoint: `/{instagram_user_id}/messages` with body `{recipient: {id: sender_id}, message: {text: "..."}}`
 - Webhooks need to be configured in Meta for Developers console
 - Flow execution is asynchronous with error handling
 - All dates stored as JavaScript Date objects  

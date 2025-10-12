@@ -353,20 +353,15 @@ export function registerRoutes(app: Express, storage: IStorage) {
         // Handle messaging webhooks (DMs)
         if (item.messaging && Array.isArray(item.messaging)) {
           for (const msg of item.messaging) {
-            // Fetch conversation_id for this sender
-            const api = new InstagramAPI(account.accessToken, account.instagramUserId || undefined);
-            const conversationId = await api.getConversationIdBySenderId(msg.sender?.id);
-            
             const triggerData = {
               message_id: msg.message?.mid,
               message_text: msg.message?.text,
               sender_id: msg.sender?.id,
-              conversation_id: conversationId,
               timestamp: msg.timestamp,
             };
 
             console.log("Saving DM webhook event for account:", account.username);
-            console.log("DM trigger data with conversation_id:", triggerData);
+            console.log("DM trigger data:", triggerData);
 
             const webhookEvent = await storage.createWebhookEvent({
               accountId: account.id,
@@ -459,16 +454,11 @@ export function registerRoutes(app: Express, storage: IStorage) {
                 const msgData = value.message || (value.messages && value.messages[0]);
                 const senderId = msgData?.from?.id || value.from?.id || value.sender?.id;
                 
-                // Fetch conversation_id for this sender
-                const api = new InstagramAPI(account.accessToken, account.instagramUserId || undefined);
-                const conversationId = senderId ? await api.getConversationIdBySenderId(senderId) : null;
-                
                 if (msgData) {
                   triggerData = {
                     message_id: msgData.mid || msgData.id || value.id,
                     message_text: msgData.text || value.text,
                     sender_id: senderId,
-                    conversation_id: conversationId,
                     timestamp: msgData.created_time || value.created_time || value.timestamp,
                   };
                 } else {
@@ -477,7 +467,6 @@ export function registerRoutes(app: Express, storage: IStorage) {
                     message_id: value.id,
                     message_text: value.text,
                     sender_id: senderId,
-                    conversation_id: conversationId,
                     timestamp: value.created_time || value.timestamp,
                   };
                 }

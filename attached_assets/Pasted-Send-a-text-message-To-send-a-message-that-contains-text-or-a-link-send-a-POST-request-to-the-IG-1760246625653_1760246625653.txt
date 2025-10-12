@@ -1,0 +1,129 @@
+Send a text message
+To send a message that contains text or a link, send a POST request to the /<IG_ID>/messages endpoint with the recipient parameter containing the Instagram-scoped ID (<IGSID>) and the message parameter containing the text or link.
+
+Message text must be UTF-8 and be a 1000 bytes or less. Links must be valid formatted URLs.
+
+Sample Request
+Formatted for readability.
+
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messages"
+     -H "Authorization: Bearer <INSTAGRAM_USER_ACCESS_TOKEN>" 
+     -H "Content-Type: application/json" 
+     -d '{
+           "recipient":{
+               "id":"<IGSID>"
+           },
+           "message":{
+              "text":"<TEXT_OR_LINK>"
+           }
+        }'
+Send an image or GIF
+To send an image or gif, send a POST request to the /<IG_ID>/messages endpoint with the recipient parameter containing the Instagram-scoped ID (<IGSID>) and the message parameter containing an attachment object with type set to image and payload containing url set to the URL for the image or GIF.
+
+Sample Request
+Formatted for readability.
+
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messages"
+     -H "Authorization: Bearer <INSTAGRAM_USER_ACCESS_TOKEN>" 
+     -H "Content-Type: application/json" 
+     -d '{
+           "recipient":{
+               "id":"<IGSID>"
+           },
+           "message":{
+              "attachment":{
+               "type":"image",
+               "payload":{
+                 "url":"<IMAGE_OR_GIF_URL>",
+               }
+             }
+           }
+         }' 
+Send audio or video
+To send an audio message, send a POST request to the /<IG_ID>/messages endpoint with the recipient parameter containing the Instagram-scoped ID (<IGSID>) and the message parameter containing the attachment object with type as audio or video and payload containing url set to the URL for the audio or video file.
+
+Sample Request
+Formatted for readability.
+
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messages"
+     -H "Authorization: Bearer <INSTAGRAM_USER_ACCESS_TOKEN>" 
+     -H "Content-Type: application/json" 
+     -d '{
+           "recipient":{
+               "id":"<IGSID>"
+           },
+           "message":{
+              "attachment":{
+               "type":"audio",  // Or set to video 
+               "payload":{
+                 "url":"<AUDIO_OR_VIDEO_FILE_URL>",
+               }
+             }
+          }
+        }'
+Send a Sticker
+To send a heart sticker, send a POST request to the /<IG_ID>/messages endpoint with the recipient parameter containing the Instagram-scoped ID (<IGSID>) and the message parameter containing an attachment object with the type set to like_heart.
+
+Sample Request
+Formatted for readability.
+
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messages"
+     -H "Authorization: Bearer <INSTAGRAM_USER_ACCESS_TOKEN>" 
+     -H "Content-Type: application/json" 
+     -d '{
+           "recipient":{
+               "id":"<IGSID>"
+           },
+           "message":{
+              "attachment":{
+                "type":"like_heart",
+              }
+            }
+         }'
+React or unreact to a message
+To send a reaction, send a POST request to the /<IG_ID>/messages endpoint with the recipient parameter containing the Instagram-scoped ID (<IGSID>) and the sender_action parameter set to react and payload containing the message_id set to the ID for the message to apply the reaction to and reaction set to love.
+
+To remove a reaction, repeat this request with the sender_action parameter to unreact with the payload containing message_id parameter only. Omit reaction.
+
+Sample Request
+Formatted for readability.
+
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messages"
+     -H "Authorization: Bearer <INSTAGRAM_USER_ACCESS_TOKEN>" 
+     -H "Content-Type: application/json" 
+     -d '{
+           "recipient":{
+               "id":"<IGSID>"
+           },
+           "sender_action":"react",  // Or set to unreact to remove the reaction
+           "payload":{
+             "message_id":"<MESSAGE_ID>",
+             "reaction":"love",      // Omit if removing a reaction
+           }
+         }' 
+Send a Published Post
+To send a message that contains an app user's Instagram post, send a POST request to the /<IG_ID>/messages endpoint with the recipient parameter containing the Instagram-scoped ID (<IGSID>) and the message parameter containing an attachment object with the type set to MEDIA_SHARE and payload containing the Meta ID for the post.
+
+The app user must own the post to be used in the message. Learn how to get your app user's Instagram posts. 
+
+Learn how to fetch the media owned by the business.
+
+Sample Request
+Formatted for readability.
+
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messages"
+     -H "Authorization: Bearer <INSTAGRAM_USER_ACCESS_TOKEN>" 
+     -H "Content-Type: application/json" 
+     -d '{
+           "recipient":{
+               "id":"<IGSID>"
+           },
+           "message":{
+              "attachment":{
+                "type":"MEDIA_SHARE",
+                "payload":{
+                  "id":"<POST_ID>",
+                }
+              }
+           }
+        }'
