@@ -32,9 +32,9 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
     try {
       console.log(`\n🔔 Subscribing webhooks for Instagram account: ${instagramUserId}`);
       
-      // Per Instagram official documentation: POST /{instagram-account-id}/subscribed_apps
-      // IMPORTANT: Must use graph.instagram.com (not graph.facebook.com)
-      const subscribeUrl = `https://graph.instagram.com/v24.0/${instagramUserId}/subscribed_apps`;
+      // Per Instagram Business Account documentation: POST /{instagram-account-id}/subscribed_apps
+      // Note: Business accounts use graph.facebook.com (not graph.instagram.com)
+      const subscribeUrl = `https://graph.facebook.com/v24.0/${instagramUserId}/subscribed_apps`;
       
       console.log(`📡 Subscription URL: ${subscribeUrl}`);
       console.log(`🔑 Using access token: ${accessToken.substring(0, 20)}...`);
@@ -98,8 +98,8 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
     try {
       // Check account-level subscriptions
       // GET /{instagram-account-id}/subscribed_apps
-      // IMPORTANT: Must use graph.instagram.com (not graph.facebook.com)
-      const checkUrl = `https://graph.instagram.com/v24.0/${instagramUserId}/subscribed_apps`;
+      // Note: Business accounts use graph.facebook.com (not graph.instagram.com)
+      const checkUrl = `https://graph.facebook.com/v24.0/${instagramUserId}/subscribed_apps`;
       
       const response = await fetch(`${checkUrl}?access_token=${accessToken}`);
       const data = await response.json();

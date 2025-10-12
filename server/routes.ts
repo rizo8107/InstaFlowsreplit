@@ -546,31 +546,17 @@ export function registerRoutes(app: Express, storage: IStorage) {
         const instagramUserId = item.id;
         console.log("Processing webhook for Instagram user ID:", instagramUserId);
         
-        let account = await storage.getAccountByUserId(instagramUserId);
+        let account = await storage.getAccountByInstagramUserId(instagramUserId);
 
         if (!account) {
-          console.log("No account found for Instagram user ID:", instagramUserId);
+          console.log(`\n⚠️  NO ACCOUNT FOUND for Instagram User ID: ${instagramUserId}`);
+          console.log(`   This webhook cannot be processed because the Instagram account is not connected.`);
+          console.log(`   To fix: Connect this Instagram account via OAuth in the Accounts page.`);
+          console.log(`   Webhook will be ignored.\n`);
           
-          const accounts = await storage.getAllAccounts();
-          const firstActiveAccount = accounts.find(a => a.isActive);
-          
-          if (firstActiveAccount) {
-            console.log("Auto-updating Instagram User ID for account:", firstActiveAccount.username);
-            await storage.updateAccount(firstActiveAccount.id, { instagramUserId: instagramUserId });
-            account = await storage.getAccount(firstActiveAccount.id);
-          }
-          
-          if (!account) {
-            if (accounts.length > 0) {
-              await storage.createWebhookEvent({
-                accountId: accounts[0].id,
-                eventType: "unknown",
-                payload: { raw: item, reason: "account_not_found", instagram_user_id: instagramUserId },
-                processed: false,
-              });
-            }
-            continue;
-          }
+          // Do NOT auto-update or mutate any accounts - this causes data corruption
+          // The account must be properly connected via OAuth
+          continue;
         }
 
         if (!account.isActive) {

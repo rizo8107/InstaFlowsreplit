@@ -1,0 +1,155 @@
+# 🔧 Webhook Fixes - Complete Summary
+
+## 📊 Current Status
+
+### ✅ What's Working
+Based on your logs, I can confirm:
+1. **Webhooks ARE being received** - Comments and DMs are coming through
+2. **Webhook verification IS working** - Meta successfully verifies your endpoint
+3. **Token system IS working** - Database-first with environment fallback
+
+### ❌ The Actual Problem
+```
+Processing webhook for Instagram user ID: 17841403285682665
+No account found for Instagram user ID: 17841403285682665
+```
+
+**Translation**: Webhooks are configured and working, but the Instagram account (`17841403285682665`) isn't connected in your app's database!
+
+## 🛠️ What I Fixed
+
+### 1. **Database Token Management** ✅
+- Webhook verify token now stored in database
+- Auto-syncs from environment variables on first access
+- Production and development both use same database
+- **Result**: Production webhook verification now works
+
+### 2. **Enhanced Logging** ✅
+Added detailed console logs to track:
+```
+🔐 Webhook Verification Request:
+  Mode: subscribe
+  Received Token: abc123...
+  Expected Token (from database): abc123...
+  Tokens Match: true
+✅ Webhook verified successfully!
+```
+
+### 3. **Auto-Subscription Logging** ✅
+When accounts connect, you'll now see:
+```
+🔔 Subscribing webhooks for Instagram account: 12345...
+📡 Subscription URL: https://graph.facebook.com/v24.0/...
+🔑 Using access token: EAAFB...
+📥 Subscription response: { "success": true }
+✅ Webhooks subscribed successfully!
+```
+
+## 🚀 What You Need To Do
+
+### Option A: Connect Account via OAuth (Recommended)
+
+**This will automatically subscribe webhooks:**
+
+1. Go to your app: https://insta-flows-nirmal40.replit.app
+2. Login/Register
+3. Go to **Accounts** page
+4. Click **"Connect Instagram Account"**
+5. Complete Instagram OAuth
+6. **Watch the console logs** - you'll see:
+   - Account being saved
+   - Automatic webhook subscription attempt
+   - Success or error messages
+
+### Option B: Manual Webhook Setup (If OAuth Fails)
+
+If auto-subscription doesn't work, you'll see detailed errors in logs. Then manually:
+
+1. **Go to Meta App Dashboard**: https://developers.facebook.com/apps/YOUR_APP_ID/webhooks/
+2. **Select "Instagram"** as object type
+3. **Configure**:
+   - Callback URL: `https://insta-flows-nirmal40.replit.app/api/webhooks/instagram`
+   - Verify Token: (get from your Accounts page)
+4. **Subscribe to**:  comments, messages, mentions, story_insights, live_comments, message_reactions
+5. **Click "Verify and save"**
+
+## 🔍 Debugging Guide
+
+### If Webhooks Don't Auto-Subscribe During OAuth:
+
+Check console logs for:
+```
+❌ Failed to subscribe webhooks for account 12345
+Response status: 400
+Error details: { "error": { "message": "...", "code": 200 } }
+```
+
+Common errors:
+- **Code 200**: Permission issue - check app has required permissions
+- **Code 190**: Invalid token - token expired or insufficient scope
+- **Code 100**: Invalid parameters - check API request format
+
+### If Webhook Verification Fails:
+
+Check console logs for:
+```
+🔐 Webhook Verification Request:
+  Received Token: xyz789
+  Expected Token (from database): abc123
+  Tokens Match: false
+❌ Webhook verification FAILED - token mismatch
+```
+
+**Fix**: Make sure token in Meta Dashboard EXACTLY matches token in your app's database.
+
+### If Account Still Shows "No account found":
+
+1. **Check database**: Is the Instagram account ID in your accounts table?
+2. **Check logs**: Did OAuth complete successfully?
+3. **Reconnect**: Try disconnecting and reconnecting the account
+
+## 📝 Key Points
+
+| Issue | Status | Solution |
+|-------|--------|----------|
+| **Webhook verification in production** | ✅ FIXED | Token auto-syncs from env to database |
+| **Auto-subscription during OAuth** | ⚠️ NEEDS TESTING | Enhanced logging added to debug |
+| **Account not found in database** | ❌ ACTION NEEDED | Connect account via OAuth |
+| **Manual webhook setup** | ✅ WORKING | Webhooks are being received |
+
+## 🎯 Next Steps (Priority Order)
+
+1. **Connect Instagram account via OAuth** in production
+2. **Watch console logs** during connection to see auto-subscription
+3. **If auto-subscription fails**: Note the exact error message
+4. **If needed**: Manually configure webhooks in Meta Dashboard
+5. **Test**: Send a DM to your Instagram account
+6. **Verify**: Check Activity page for flow execution
+
+---
+
+## 🐛 Still Having Issues?
+
+### Production Webhook Verification
+If Meta can't verify your production webhook:
+1. Check Replit Secrets has `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
+2. Login to production and copy token from Accounts page
+3. Paste EXACT token in Meta Dashboard
+4. Watch console logs for verification request
+
+### Auto-Subscription Not Working
+If webhooks don't auto-subscribe when connecting accounts:
+1. Check console logs for detailed error
+2. Verify app has permissions: `instagram_business_basic`, `instagram_business_manage_comments`, `instagram_business_manage_messages`
+3. Try manual subscription as fallback
+
+### Webhooks Not Being Received
+If no webhook events after setup:
+1. Verify app is "Live" in Meta Dashboard
+2. Check Instagram account is connected in app
+3. Test by sending a DM to your Instagram
+4. Check console logs for webhook POST requests
+
+---
+
+**The system is now ready. Try connecting an Instagram account and watch the logs!**
