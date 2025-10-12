@@ -153,29 +153,38 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                   <Card key={index} className="p-3">
                     <div className="space-y-2">
                       <div className="space-y-1">
-                        <Input
-                          placeholder="Field (e.g., comment_text, message_text)"
+                        <Select
                           value={condition.field}
-                          onChange={(e) => updateCondition(index, { field: e.target.value })}
-                          data-testid={`input-condition-field-${index}`}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Available fields: comment_text, comment_id, from_username, from_id, message_text, message_id, sender_id
-                        </p>
+                          onValueChange={(value) => updateCondition(index, { field: value })}
+                        >
+                          <SelectTrigger data-testid={`select-condition-field-${index}`}>
+                            <SelectValue placeholder="Select field" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="message_text">Message Text</SelectItem>
+                            <SelectItem value="comment_text">Comment Text</SelectItem>
+                            <SelectItem value="username">Username</SelectItem>
+                            <SelectItem value="user_id">User ID</SelectItem>
+                            <SelectItem value="sender_id">Sender ID</SelectItem>
+                            <SelectItem value="comment_id">Comment ID</SelectItem>
+                            <SelectItem value="message_id">Message ID</SelectItem>
+                            <SelectItem value="media_id">Media ID</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <Select
                         value={condition.operator}
                         onValueChange={(value) => updateCondition(index, { operator: value })}
                       >
                         <SelectTrigger data-testid={`select-condition-operator-${index}`}>
-                          <SelectValue />
+                          <SelectValue placeholder="Select operator" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="contains">Contains</SelectItem>
                           <SelectItem value="equals">Equals</SelectItem>
-                          <SelectItem value="regex">Regex</SelectItem>
-                          <SelectItem value="not_contains">Not Contains</SelectItem>
-                          <SelectItem value="not_equals">Not Equals</SelectItem>
+                          <SelectItem value="not_contains">Does Not Contain</SelectItem>
+                          <SelectItem value="not_equals">Does Not Equal</SelectItem>
+                          <SelectItem value="regex">Regex Match</SelectItem>
                         </SelectContent>
                       </Select>
                       <div className="flex gap-2">
