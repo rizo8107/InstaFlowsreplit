@@ -52,10 +52,12 @@ export default function Accounts() {
       window.history.replaceState({}, '', '/accounts');
     } else if (error) {
       const errorMessages: Record<string, string> = {
-        oauth_failed: "OAuth authentication failed. Please try again.",
-        no_token: "No access token received from Facebook.",
-        no_instagram_account: "No Facebook Pages found. Please create a Page and link it to Instagram.",
-        no_business_account: "No Instagram Business account linked to your Facebook Pages.",
+        oauth_cancelled: "OAuth authorization was cancelled.",
+        not_logged_in: "You must be logged in to connect Instagram.",
+        no_code: "No authorization code received from Instagram.",
+        config_missing: "Instagram app credentials not configured.",
+        token_exchange_failed: "Failed to exchange authorization code for access token.",
+        profile_fetch_failed: "Failed to fetch Instagram profile information.",
         connection_failed: "Failed to connect Instagram account. Please try again.",
       };
       toast({
