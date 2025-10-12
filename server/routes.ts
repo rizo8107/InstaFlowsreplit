@@ -191,19 +191,24 @@ export function registerRoutes(app: Express, storage: IStorage) {
           execution: updatedExecution,
         });
       } catch (error: any) {
+        const errorMessage = error.message || error.toString() || 'Unknown error occurred';
+        console.error(`[Test Execution] Error:`, error);
+        
         await storage.updateExecution(execution.id, {
           status: "failed",
-          errorMessage: error.message,
+          errorMessage,
         });
 
         res.status(500).json({
           success: false,
           executionId: execution.id,
-          error: error.message,
+          error: errorMessage,
         });
       }
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      const errorMessage = error.message || error.toString() || 'Unknown error occurred';
+      console.error(`[Test Endpoint] Error:`, error);
+      res.status(500).json({ error: errorMessage });
     }
   });
 

@@ -144,10 +144,11 @@ export class FlowEngine {
           console.log(`[FlowEngine] Replying to comment ${this.context.variables.comment_id}: ${config.message}`);
           try {
             const result = await this.api.replyToComment(this.context.variables.comment_id, config.message);
+            console.log(`[FlowEngine] Reply successful, result:`, result);
             return { success: true, action: "reply_comment", comment_id: this.context.variables.comment_id, message: config.message, result };
           } catch (error: any) {
-            console.error(`[FlowEngine] Failed to reply to comment:`, error.response?.data || error.message);
-            throw new Error(`Failed to reply to comment: ${error.response?.data?.error?.message || error.message}`);
+            console.error(`[FlowEngine] Failed to reply to comment:`, error);
+            throw error;
           }
         } else {
           const errorMsg = "Missing comment_id or message for reply_comment action";
@@ -160,10 +161,11 @@ export class FlowEngine {
           console.log(`[FlowEngine] Sending DM to ${this.context.variables.user_id}: ${config.message}`);
           try {
             const result = await this.api.sendDirectMessage(this.context.variables.user_id, config.message);
+            console.log(`[FlowEngine] DM sent successfully, result:`, result);
             return { success: true, action: "send_dm", user_id: this.context.variables.user_id, message: config.message, result };
           } catch (error: any) {
-            console.error(`[FlowEngine] Failed to send DM:`, error.response?.data || error.message);
-            throw new Error(`Failed to send DM: ${error.response?.data?.error?.message || error.message}`);
+            console.error(`[FlowEngine] Failed to send DM:`, error);
+            throw error;
           }
         } else {
           const errorMsg = `Missing user_id or message for send_dm action (user_id: ${this.context.variables.user_id})`;

@@ -50,18 +50,32 @@ export class InstagramAPI {
   }
 
   async replyToComment(commentId: string, message: string): Promise<any> {
-    const response = await axios.post(
-      `${GRAPH_API_BASE}/${commentId}/replies`,
-      {
-        message,
-      },
-      {
-        params: {
-          access_token: this.accessToken,
+    try {
+      console.log(`[InstagramAPI] Replying to comment ${commentId} with message: ${message}`);
+      
+      const response = await axios.post(
+        `${GRAPH_API_BASE}/${commentId}/replies`,
+        {
+          message,
         },
-      }
-    );
-    return response.data;
+        {
+          params: {
+            access_token: this.accessToken,
+          },
+        }
+      );
+      console.log(`[InstagramAPI] Reply sent successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error replying to comment:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
+    }
   }
 
   async deleteComment(commentId: string): Promise<boolean> {
@@ -122,6 +136,10 @@ export class InstagramAPI {
         : `${GRAPH_API_BASE}/me/messages`;
       
       console.log(`[InstagramAPI] Sending message to ${recipientId} via ${endpoint}`);
+      console.log(`[InstagramAPI] Request body:`, JSON.stringify({
+        recipient: { id: recipientId },
+        message: { text: message },
+      }));
       
       const response = await axios.post(
         endpoint,
@@ -138,8 +156,14 @@ export class InstagramAPI {
       console.log(`[InstagramAPI] Message sent successfully:`, response.data);
       return response.data;
     } catch (error: any) {
-      console.error(`[InstagramAPI] Error sending message:`, error.response?.data || error.message);
-      throw error;
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error sending message:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
 
