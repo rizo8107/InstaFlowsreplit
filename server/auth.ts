@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as FacebookStrategy } from "passport-facebook";
 import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -56,6 +57,31 @@ export function setupAuth(app: Express) {
     }),
   );
 
+  // Facebook OAuth Strategy for Instagram connection
+  if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
+    passport.use(
+      new FacebookStrategy(
+        {
+          clientID: process.env.FACEBOOK_APP_ID,
+          clientSecret: process.env.FACEBOOK_APP_SECRET,
+          callbackURL: `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/api/auth/facebook/callback`,
+          profileFields: ['id', 'emails', 'name'],
+          passReqToCallback: true,
+        },
+        async (req: any, accessToken: string, refreshToken: string, profile: any, done: any) => {
+          try {
+            // Store access token in session for later use
+            req.session.facebookAccessToken = accessToken;
+            req.session.facebookProfile = profile;
+            return done(null, req.user);
+          } catch (error) {
+            return done(error);
+          }
+        }
+      )
+    );
+  }
+
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
     const user = await storage.getUser(id);
@@ -97,4 +123,95 @@ export function setupAuth(app: Express) {
     const { password, ...safeUser } = req.user!;
     res.json(safeUser);
   });
+
+  // Facebook OAuth routes for Instagram connection
+  app.get(
+    "/api/auth/instagram",
+    (req, res, next) => {
+      if (!req.isAuthenticated()) {
+        return res.status(401).send("Must be logged in to connect Instagram");
+      }
+      next();
+    },
+    passport.authenticate("facebook", {
+      scope: [
+        "instagram_basic",
+        "pages_show_list",
+        "instagram_graph_user_profile",
+        "instagram_graph_user_media",
+        "instagram_manage_messages",
+        "instagram_manage_comments",
+      ],
+    })
+  );
+
+  app.get(
+    "/api/auth/facebook/callback",
+    passport.authenticate("facebook", { failureRedirect: "/accounts?error=oauth_failed" }),
+    async (req, res) => {
+      try {
+        const accessToken = (req.session as any).facebookAccessToken;
+        
+        if (!accessToken) {
+          return res.redirect("/accounts?error=no_token");
+        }
+
+        // Get Instagram Business Account from Facebook
+        const accountsResponse = await fetch(
+          `https://graph.facebook.com/v24.0/me/accounts?fields=instagram_business_account,access_token&access_token=${accessToken}`
+        );
+        const accountsData = await accountsResponse.json();
+
+        if (!accountsData.data || accountsData.data.length === 0) {
+          return res.redirect("/accounts?error=no_instagram_account");
+        }
+
+        // Find the first page with an Instagram Business Account
+        const pageWithInstagram = accountsData.data.find(
+          (page: any) => page.instagram_business_account
+        );
+
+        if (!pageWithInstagram) {
+          return res.redirect("/accounts?error=no_business_account");
+        }
+
+        const igUserId = pageWithInstagram.instagram_business_account.id;
+        const pageAccessToken = pageWithInstagram.access_token;
+
+        // Get Instagram account details
+        const igResponse = await fetch(
+          `https://graph.facebook.com/v24.0/${igUserId}?fields=id,username,name,profile_picture_url&access_token=${pageAccessToken}`
+        );
+        const igData = await igResponse.json();
+
+        // Check if account already exists
+        const existingAccount = await storage.getAccountByInstagramUserId(igUserId);
+        
+        if (existingAccount) {
+          // Update existing account
+          await storage.updateAccount(existingAccount.id, {
+            accessToken: pageAccessToken,
+            username: igData.username,
+          });
+        } else {
+          // Create new account
+          await storage.createAccount({
+            userId: req.user!.id,
+            instagramUserId: igUserId,
+            username: igData.username,
+            accessToken: pageAccessToken,
+          });
+        }
+
+        // Clean up session
+        delete (req.session as any).facebookAccessToken;
+        delete (req.session as any).facebookProfile;
+
+        res.redirect("/accounts?success=true");
+      } catch (error) {
+        console.error("Instagram OAuth error:", error);
+        res.redirect("/accounts?error=connection_failed");
+      }
+    }
+  );
 }

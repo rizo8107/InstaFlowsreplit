@@ -41,6 +41,7 @@ export interface IStorage {
   // Instagram Accounts
   getAccount(id: string): Promise<InstagramAccount | undefined>;
   getAccountByUserId(instagramUserId: string): Promise<InstagramAccount | undefined>;
+  getAccountByInstagramUserId(instagramUserId: string): Promise<InstagramAccount | undefined>;
   getAllAccounts(): Promise<InstagramAccount[]>;
   getUserAccounts(userId: string): Promise<InstagramAccount[]>;
   createAccount(account: InsertInstagramAccount): Promise<InstagramAccount>;
@@ -126,6 +127,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAccountByUserId(instagramUserId: string): Promise<InstagramAccount | undefined> {
+    const [account] = await db.select().from(instagramAccounts).where(eq(instagramAccounts.instagramUserId, instagramUserId));
+    return account || undefined;
+  }
+
+  async getAccountByInstagramUserId(instagramUserId: string): Promise<InstagramAccount | undefined> {
     const [account] = await db.select().from(instagramAccounts).where(eq(instagramAccounts.instagramUserId, instagramUserId));
     return account || undefined;
   }
