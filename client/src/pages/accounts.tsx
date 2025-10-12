@@ -28,12 +28,45 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 
 export default function Accounts() {
   const { toast } = useToast();
+  const [location] = useLocation();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+
+  // Handle OAuth callback messages
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+    const error = params.get("error");
+
+    if (success === "true") {
+      toast({
+        title: "Success!",
+        description: "Instagram account connected successfully via OAuth",
+      });
+      // Clear URL params
+      window.history.replaceState({}, '', '/accounts');
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        oauth_failed: "OAuth authentication failed. Please try again.",
+        no_token: "No access token received from Facebook.",
+        no_instagram_account: "No Facebook Pages found. Please create a Page and link it to Instagram.",
+        no_business_account: "No Instagram Business account linked to your Facebook Pages.",
+        connection_failed: "Failed to connect Instagram account. Please try again.",
+      };
+      toast({
+        title: "Connection Failed",
+        description: errorMessages[error] || "An unknown error occurred.",
+        variant: "destructive",
+      });
+      // Clear URL params
+      window.history.replaceState({}, '', '/accounts');
+    }
+  }, [location, toast]);
   const [newAccount, setNewAccount] = useState({
     username: "",
     instagramUserId: "",
@@ -124,59 +157,97 @@ export default function Accounts() {
             <DialogHeader>
               <DialogTitle>Connect Instagram Account</DialogTitle>
               <DialogDescription>
-                Enter your Instagram account details and access token from the Meta for Developers console.
+                Connect your Instagram Business account with one click using OAuth
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Instagram Username</Label>
-                <Input
-                  id="username"
-                  placeholder="username"
-                  value={newAccount.username}
-                  onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value })}
-                  data-testid="input-username"
-                />
+              {/* OAuth Button - Primary Method */}
+              <div className="space-y-3">
+                <Button
+                  onClick={() => {
+                    window.location.href = "/api/auth/instagram";
+                  }}
+                  className="w-full gap-2 bg-gradient-to-r from-[#E4405F] to-[#833AB4] hover:from-[#C13584] hover:to-[#6A2C91]"
+                  size="lg"
+                  data-testid="button-oauth-connect"
+                >
+                  <Instagram className="w-5 h-5" />
+                  Connect with Instagram
+                </Button>
+                <p className="text-xs text-center text-muted-foreground">
+                  Requires Instagram Business or Creator account linked to a Facebook Page
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="user-id">Instagram User ID</Label>
-                <Input
-                  id="user-id"
-                  placeholder="1234567890"
-                  value={newAccount.instagramUserId}
-                  onChange={(e) => setNewAccount({ ...newAccount, instagramUserId: e.target.value })}
-                  data-testid="input-user-id"
-                />
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or connect manually
+                  </span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="access-token">Access Token</Label>
-                <Input
-                  id="access-token"
-                  type="password"
-                  placeholder="Enter access token"
-                  value={newAccount.accessToken}
-                  onChange={(e) => setNewAccount({ ...newAccount, accessToken: e.target.value })}
-                  data-testid="input-access-token"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-picture">Profile Picture URL (Optional)</Label>
-                <Input
-                  id="profile-picture"
-                  placeholder="https://..."
-                  value={newAccount.profilePicture}
-                  onChange={(e) => setNewAccount({ ...newAccount, profilePicture: e.target.value })}
-                  data-testid="input-profile-picture"
-                />
-              </div>
-              <Button
-                onClick={() => addMutation.mutate()}
-                disabled={!newAccount.username || !newAccount.instagramUserId || !newAccount.accessToken || addMutation.isPending}
-                className="w-full"
-                data-testid="button-connect"
-              >
-                {addMutation.isPending ? "Connecting..." : "Connect Account"}
-              </Button>
+
+              {/* Manual Form - Advanced Option */}
+              <details className="space-y-4">
+                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                  Advanced: Manual Configuration
+                </summary>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Instagram Username</Label>
+                    <Input
+                      id="username"
+                      placeholder="username"
+                      value={newAccount.username}
+                      onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value })}
+                      data-testid="input-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user-id">Instagram User ID</Label>
+                    <Input
+                      id="user-id"
+                      placeholder="1234567890"
+                      value={newAccount.instagramUserId}
+                      onChange={(e) => setNewAccount({ ...newAccount, instagramUserId: e.target.value })}
+                      data-testid="input-user-id"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="access-token">Access Token</Label>
+                    <Input
+                      id="access-token"
+                      type="password"
+                      placeholder="Enter access token"
+                      value={newAccount.accessToken}
+                      onChange={(e) => setNewAccount({ ...newAccount, accessToken: e.target.value })}
+                      data-testid="input-access-token"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-picture">Profile Picture URL (Optional)</Label>
+                    <Input
+                      id="profile-picture"
+                      placeholder="https://..."
+                      value={newAccount.profilePicture}
+                      onChange={(e) => setNewAccount({ ...newAccount, profilePicture: e.target.value })}
+                      data-testid="input-profile-picture"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => addMutation.mutate()}
+                    disabled={!newAccount.username || !newAccount.instagramUserId || !newAccount.accessToken || addMutation.isPending}
+                    className="w-full"
+                    data-testid="button-connect"
+                  >
+                    {addMutation.isPending ? "Connecting..." : "Connect Account"}
+                  </Button>
+                </div>
+              </details>
             </div>
           </DialogContent>
         </Dialog>
