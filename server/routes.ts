@@ -139,6 +139,69 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  app.post("/api/flows/:flowId/test", async (req, res) => {
+    try {
+      const flow = await storage.getFlow(req.params.flowId);
+      if (!flow) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+
+      const { triggerData } = req.body;
+      if (!triggerData) {
+        return res.status(400).json({ error: "triggerData is required" });
+      }
+
+      const account = await storage.getAccount(flow.accountId);
+      if (!account) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      console.log(`[Manual Test] Testing flow ${flow.name} with trigger data:`, triggerData);
+
+      const execution = await storage.createExecution({
+        flowId: flow.id,
+        accountId: account.id,
+        triggerType: triggerData.trigger_type || "manual_test",
+        triggerData,
+        status: "pending",
+        executionPath: [],
+        errorMessage: null,
+      });
+
+      try {
+        const api = new InstagramAPI(account.accessToken, account.instagramUserId || undefined);
+        const engine = new FlowEngine(api, flow, triggerData);
+        const result = await engine.execute();
+
+        await storage.updateExecution(execution.id, {
+          status: result.success ? "success" : "failed",
+          executionPath: result.executionPath,
+          errorMessage: result.error || null,
+        });
+
+        res.json({
+          success: result.success,
+          executionId: execution.id,
+          executionPath: result.executionPath,
+          error: result.error,
+        });
+      } catch (error: any) {
+        await storage.updateExecution(execution.id, {
+          status: "failed",
+          errorMessage: error.message,
+        });
+
+        res.status(500).json({
+          success: false,
+          executionId: execution.id,
+          error: error.message,
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Webhook Events
   app.get("/api/webhook-events", async (req, res) => {
     try {

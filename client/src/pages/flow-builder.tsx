@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Play, Settings as SettingsIcon, ChevronUp, ChevronDown, Activity } from "lucide-react";
+import { ArrowLeft, Save, Play, Settings as SettingsIcon, ChevronUp, ChevronDown, Activity, Pin, PlayCircle } from "lucide-react";
 import { nodeTypes } from "@/components/flow-builder/custom-nodes";
 import { NodePalette } from "@/components/flow-builder/node-palette";
 import { NodeConfigPanel } from "@/components/flow-builder/node-config-panel";
@@ -59,6 +59,7 @@ export default function FlowBuilder() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [executionsPanelOpen, setExecutionsPanelOpen] = useState(false);
   const [selectedExecution, setSelectedExecution] = useState<any | null>(null);
+  const [pinnedExecution, setPinnedExecution] = useState<any | null>(null);
 
   const { data: flow, isLoading: flowLoading } = useQuery<Flow>({
     queryKey: [`/api/flows/${id}`],
@@ -85,6 +86,30 @@ export default function FlowBuilder() {
       setEdges(flow.edges as Edge[]);
     }
   }, [flow, setNodes, setEdges]);
+
+  const testMutation = useMutation({
+    mutationFn: async (triggerData: any) => {
+      return apiRequest("POST", `/api/flows/${id}/test`, { triggerData });
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/flows/${id}/executions`] });
+      refetchExecutions();
+      toast({
+        title: result.success ? "Test successful" : "Test failed",
+        description: result.success 
+          ? "Flow executed successfully with pinned data" 
+          : `Error: ${result.error}`,
+        variant: result.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Test failed",
+        description: error.message || "Failed to test flow",
+        variant: "destructive",
+      });
+    },
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -384,15 +409,37 @@ export default function FlowBuilder() {
               {/* Execution List */}
               <div className="w-80 border-r p-4 overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-sm">Recent Executions</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => refetchExecutions()}
-                    data-testid="button-refresh-executions"
-                  >
-                    Refresh
-                  </Button>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">Recent Executions</h3>
+                    {pinnedExecution && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pinned for testing
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {pinnedExecution && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => testMutation.mutate(pinnedExecution.triggerData)}
+                        disabled={testMutation.isPending}
+                        className="gap-1"
+                        data-testid="button-test-flow"
+                      >
+                        <PlayCircle className="w-3 h-3" />
+                        {testMutation.isPending ? "Testing..." : "Test"}
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => refetchExecutions()}
+                      data-testid="button-refresh-executions"
+                    >
+                      Refresh
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {executions && executions.length > 0 ? (
@@ -401,21 +448,47 @@ export default function FlowBuilder() {
                         key={exec.id}
                         className={`cursor-pointer hover-elevate ${
                           selectedExecution?.id === exec.id ? "ring-2 ring-primary" : ""
-                        }`}
+                        } ${pinnedExecution?.id === exec.id ? "ring-2 ring-blue-500" : ""}`}
                         onClick={() => setSelectedExecution(exec)}
                         data-testid={`execution-${exec.id}`}
                       >
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between mb-2">
-                            <Badge variant={exec.status === "success" ? "default" : "destructive"}>
-                              {exec.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={exec.status === "success" ? "default" : "destructive"}>
+                                {exec.status}
+                              </Badge>
+                              {pinnedExecution?.id === exec.id && (
+                                <Pin className="w-3 h-3 text-blue-500 fill-blue-500" />
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPinnedExecution(pinnedExecution?.id === exec.id ? null : exec);
+                                toast({
+                                  title: pinnedExecution?.id === exec.id ? "Unpinned" : "Pinned for testing",
+                                  description: pinnedExecution?.id === exec.id 
+                                    ? "Execution unpinned" 
+                                    : "Click Test button to run flow with this data",
+                                });
+                              }}
+                              data-testid={`button-pin-${exec.id}`}
+                            >
+                              <Pin className={`w-3 h-3 ${pinnedExecution?.id === exec.id ? "fill-blue-500 text-blue-500" : ""}`} />
+                            </Button>
+                          </div>
+                          <div className="flex items-center justify-between">
                             <span className="text-xs text-muted-foreground">
-                              {new Date(exec.executedAt).toLocaleString()}
+                              {exec.triggerType}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(exec.executedAt).toLocaleTimeString()}
                             </span>
                           </div>
-                          <p className="text-sm font-medium truncate">{exec.flowName}</p>
-                          <p className="text-xs text-muted-foreground">{exec.triggerType}</p>
                         </CardContent>
                       </Card>
                     ))
