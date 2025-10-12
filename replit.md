@@ -27,7 +27,8 @@ The MVP is complete with:
   - **DM Actions Fixed**: 
     - Updated endpoint from `/me/messages` to `/{conversation_id}/messages`
     - Changed request format from `{recipient: {id}, message: {text}}` to `{message: {text}}`
-    - Added `conversation_id` extraction from DM webhook events
+    - **CRITICAL**: Added conversation_id fetching from Instagram API (webhooks don't include it)
+    - Webhook handler now calls `getConversationIdBySenderId()` to fetch conversation_id
     - Both `send_dm` and `send_link` now use conversation_id
   - **All Comment Actions Enhanced**:
     - Reply to Comment: Proper error handling and result tracking

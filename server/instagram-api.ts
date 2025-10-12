@@ -202,11 +202,39 @@ export class InstagramAPI {
       {
         params: {
           access_token: this.accessToken,
-          fields: "id,messages{id,from,created_time,message}",
+          platform: "instagram",
+          fields: "id,participants,messages{id,from,created_time,message}",
         },
       }
     );
     return response.data;
+  }
+
+  async getConversationIdBySenderId(senderId: string): Promise<string | null> {
+    try {
+      console.log(`[InstagramAPI] Fetching conversation for sender ${senderId}`);
+      
+      const conversations = await this.getConversations();
+      
+      // Find conversation with this sender as a participant
+      if (conversations.data && Array.isArray(conversations.data)) {
+        for (const conv of conversations.data) {
+          if (conv.participants && conv.participants.data) {
+            const hasSender = conv.participants.data.some((p: any) => p.id === senderId);
+            if (hasSender) {
+              console.log(`[InstagramAPI] Found conversation ${conv.id} for sender ${senderId}`);
+              return conv.id;
+            }
+          }
+        }
+      }
+      
+      console.log(`[InstagramAPI] No conversation found for sender ${senderId}`);
+      return null;
+    } catch (error: any) {
+      console.error(`[InstagramAPI] Error fetching conversation:`, error);
+      return null;
+    }
   }
 
   // Media
