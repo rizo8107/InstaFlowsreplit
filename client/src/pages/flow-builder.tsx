@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import ReactFlow, {
@@ -24,6 +24,7 @@ import { ArrowLeft, Save, Play, Settings as SettingsIcon, ChevronUp, ChevronDown
 import { nodeTypes } from "@/components/flow-builder/custom-nodes";
 import { NodePalette } from "@/components/flow-builder/node-palette";
 import { NodeConfigPanel } from "@/components/flow-builder/node-config-panel";
+import { CustomEdge } from "@/components/flow-builder/custom-edge";
 import type { Flow, InstagramAccount } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +52,10 @@ export default function FlowBuilder() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
+  const edgeTypes = useMemo(() => ({
+    default: CustomEdge,
+  }), []);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [flowName, setFlowName] = useState("");
   const [flowDescription, setFlowDescription] = useState("");
@@ -351,6 +356,10 @@ export default function FlowBuilder() {
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              deleteKeyCode="Delete"
+              edgesFocusable={true}
+              edgesUpdatable={true}
               fitView
             >
               <Background color="#DBDBDB" gap={16} />

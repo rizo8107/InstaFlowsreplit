@@ -17,7 +17,9 @@ import {
   Bell,
   AtSign,
   Camera,
-  X
+  X,
+  Variable,
+  StopCircle
 } from "lucide-react";
 
 const iconMap = {
@@ -35,6 +37,8 @@ const actionIconMap = {
   send_link: LinkIcon,
   api_call: Globe,
   delay: Clock,
+  set_variable: Variable,
+  stop_flow: StopCircle,
 };
 
 const triggerIconMap = {

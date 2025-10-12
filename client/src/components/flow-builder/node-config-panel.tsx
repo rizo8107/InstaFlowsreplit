@@ -244,6 +244,8 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                   <SelectItem value="send_link">Send Link</SelectItem>
                   <SelectItem value="api_call">API Call</SelectItem>
                   <SelectItem value="delay">Delay</SelectItem>
+                  <SelectItem value="set_variable">Set Variable</SelectItem>
+                  <SelectItem value="stop_flow">Stop Flow</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -461,6 +463,46 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                   </Select>
                 </div>
               </>
+            )}
+
+            {selectedNode.data.actionType === "set_variable" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="variable-name">Variable Name</Label>
+                  <Input
+                    id="variable-name"
+                    placeholder="my_variable"
+                    value={selectedNode.data.actionConfig?.variableName || ""}
+                    onChange={(e) => handleUpdate({ 
+                      actionConfig: { ...selectedNode.data.actionConfig, variableName: e.target.value }
+                    })}
+                    data-testid="input-variable-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="variable-value">Variable Value</Label>
+                  <Input
+                    id="variable-value"
+                    placeholder="Value or {username}"
+                    value={selectedNode.data.actionConfig?.variableValue || ""}
+                    onChange={(e) => handleUpdate({ 
+                      actionConfig: { ...selectedNode.data.actionConfig, variableValue: e.target.value }
+                    })}
+                    data-testid="input-variable-value"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use variables: {"{username}"}, {"{message_text}"}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {selectedNode.data.actionType === "stop_flow" && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm text-muted-foreground">
+                  This action will stop the flow execution. No further nodes will be processed.
+                </p>
+              </div>
             )}
 
             <div className="space-y-2">

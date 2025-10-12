@@ -291,6 +291,33 @@ export class FlowEngine {
           console.log(`[FlowEngine] ${errorMsg}`);
           throw new Error(errorMsg);
         }
+
+      case "set_variable":
+        if (config.variableName) {
+          const variableValue = this.replaceVariables(config.variableValue || "");
+          console.log(`[FlowEngine] Setting variable ${config.variableName} = ${variableValue}`);
+          this.context.variables[config.variableName] = variableValue;
+          return { 
+            success: true, 
+            action: "set_variable", 
+            variableName: config.variableName, 
+            variableValue,
+            allVariables: this.context.variables
+          };
+        } else {
+          const errorMsg = "Missing variableName for set_variable action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
+
+      case "stop_flow":
+        console.log(`[FlowEngine] Stopping flow execution`);
+        return { success: true, action: "stop_flow", message: "Flow execution stopped" };
+
+      default:
+        const errorMsg = `Unknown action type: ${actionType}`;
+        console.log(`[FlowEngine] ${errorMsg}`);
+        throw new Error(errorMsg);
     }
   }
 
@@ -353,6 +380,12 @@ export class FlowEngine {
                 result: actionResult,
               },
             });
+            
+            // Stop flow execution if stop_flow action
+            if (node.data.actionType === "stop_flow") {
+              console.log(`[FlowEngine] Flow stopped at node ${node.id}`);
+              return null;
+            }
           }
           return node.id;
 
