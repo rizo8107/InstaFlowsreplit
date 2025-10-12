@@ -37,6 +37,8 @@ export default function Accounts() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<any>(null);
+  const [webhookToken, setWebhookToken] = useState<string>("");
+  const [copiedToken, setCopiedToken] = useState(false);
 
   // Handle OAuth callback messages
   useEffect(() => {
@@ -163,6 +165,53 @@ export default function Accounts() {
       toast({
         title: "Error",
         description: "Failed to check webhook status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: tokenData } = useQuery({
+    queryKey: ["/api/webhook-token"],
+  });
+
+  const generateTokenMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/webhook-token/generate", { method: "POST" });
+      if (!response.ok) throw new Error("Failed to generate token");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setWebhookToken(data.token);
+      toast({
+        title: "Token Generated",
+        description: "New webhook verify token generated. Click 'Save' to store it.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate token.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveTokenMutation = useMutation({
+    mutationFn: async (token: string) => {
+      const response = await apiRequest("POST", "/api/webhook-token/set", { token });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/webhook-token"] });
+      toast({
+        title: "Token Saved",
+        description: "Webhook verify token saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save token.",
         variant: "destructive",
       });
     },
@@ -321,6 +370,62 @@ export default function Accounts() {
                 {copiedWebhook ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Webhook Verify Token</Label>
+            <div className="flex gap-2">
+              <Input
+                value={webhookToken || tokenData?.token || ""}
+                onChange={(e) => setWebhookToken(e.target.value)}
+                type="password"
+                placeholder="Enter or generate webhook token"
+                className="font-mono text-sm"
+                data-testid="input-webhook-token"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const token = webhookToken || tokenData?.token || "";
+                  if (token) {
+                    navigator.clipboard.writeText(token);
+                    setCopiedToken(true);
+                    setTimeout(() => setCopiedToken(false), 2000);
+                    toast({
+                      title: "Copied!",
+                      description: "Webhook token copied to clipboard",
+                    });
+                  }
+                }}
+                disabled={!webhookToken && !tokenData?.token}
+                data-testid="button-copy-token"
+              >
+                {copiedToken ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => generateTokenMutation.mutate()}
+                disabled={generateTokenMutation.isPending}
+                data-testid="button-generate-token"
+              >
+                <RefreshCw className={`w-4 h-4 ${generateTokenMutation.isPending ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button
+                onClick={() => saveTokenMutation.mutate(webhookToken || tokenData?.token || "")}
+                disabled={!webhookToken && !tokenData?.token || saveTokenMutation.isPending}
+                data-testid="button-save-token"
+              >
+                {saveTokenMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+            {tokenData?.source && (
+              <p className="text-xs text-muted-foreground">
+                Current source: {tokenData.source}
+                {tokenData.source === 'environment' && ' (from Replit Secrets)'}
+                {tokenData.source === 'database' && ' (saved in app)'}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">

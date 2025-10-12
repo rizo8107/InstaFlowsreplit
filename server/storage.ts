@@ -14,13 +14,16 @@ import {
   type InsertContact,
   type User,
   type InsertUser,
+  type AppSetting,
+  type InsertAppSetting,
   instagramAccounts,
   flows,
   flowExecutions,
   webhookEvents,
   flowTemplates,
   contacts,
-  users
+  users,
+  appSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -90,6 +93,10 @@ export interface IStorage {
   upsertContact(accountId: string, instagramUserId: string, username?: string): Promise<Contact>;
   updateContact(id: string, updates: Partial<Contact>): Promise<Contact | undefined>;
   deleteContact(id: string): Promise<boolean>;
+
+  // App Settings
+  getSetting(key: string): Promise<AppSetting | undefined>;
+  setSetting(key: string, value: string): Promise<AppSetting>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -386,6 +393,31 @@ export class DatabaseStorage implements IStorage {
       instagramUserId,
       username: username || instagramUserId,
     });
+  }
+
+  // App Settings
+  async getSetting(key: string): Promise<AppSetting | undefined> {
+    const [setting] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return setting || undefined;
+  }
+
+  async setSetting(key: string, value: string): Promise<AppSetting> {
+    const existing = await this.getSetting(key);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(appSettings)
+        .set({ value, updatedAt: new Date() })
+        .where(eq(appSettings.key, key))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(appSettings)
+      .values({ key, value })
+      .returning();
+    return created;
   }
 }
 

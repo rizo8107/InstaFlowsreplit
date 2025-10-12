@@ -384,8 +384,14 @@ export function registerRoutes(app: Express, storage: IStorage) {
   // Webhook Token Management
   app.get("/api/webhook-token", requireAuth, async (req, res) => {
     try {
-      const token = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
-      res.json({ token: token || null, exists: !!token });
+      // Check database first, then fall back to env var
+      const dbSetting = await storage.getSetting('webhook_verify_token');
+      const token = dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+      res.json({ 
+        token: token || null, 
+        exists: !!token,
+        source: dbSetting ? 'database' : (process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN ? 'environment' : 'none')
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -398,7 +404,27 @@ export function registerRoutes(app: Express, storage: IStorage) {
       
       res.json({ 
         token,
-        message: "Copy this token and add it to your Replit Secrets as INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
+        message: "Token generated successfully. Click 'Save' to store it."
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/webhook-token/set", requireAuth, async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token || typeof token !== 'string' || token.length < 16) {
+        return res.status(400).json({ error: "Invalid token. Must be at least 16 characters." });
+      }
+      
+      await storage.setSetting('webhook_verify_token', token);
+      
+      res.json({ 
+        success: true,
+        message: "Webhook verify token saved successfully",
+        token
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -473,7 +499,9 @@ export function registerRoutes(app: Express, storage: IStorage) {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
-    const verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+    // Check database first, then fall back to env var
+    const dbSetting = await storage.getSetting('webhook_verify_token');
+    const verifyToken = dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
 
     if (mode === "subscribe" && token === verifyToken) {
       console.log("Webhook verified");
