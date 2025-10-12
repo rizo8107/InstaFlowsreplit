@@ -72,11 +72,13 @@ export function setupAuth(app: Express) {
     }
 
     // Determine the callback URL based on environment
-    const baseUrl = process.env.REPLIT_DOMAINS 
-      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-      : process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+    // Use custom OAuth base URL if set, otherwise fall back to Replit domains
+    const baseUrl = process.env.OAUTH_BASE_URL || 
+      (process.env.REPLIT_DOMAINS 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : 'http://localhost:5000');
     
     const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
     
@@ -160,11 +162,13 @@ export function setupAuth(app: Express) {
       }
 
       // Determine the callback URL (must match exactly)
-      const baseUrl = process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : 'http://localhost:5000';
+      // Use custom OAuth base URL if set, otherwise fall back to Replit domains
+      const baseUrl = process.env.OAUTH_BASE_URL || 
+        (process.env.REPLIT_DOMAINS 
+          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+          : process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : 'http://localhost:5000');
       
       const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
 
