@@ -1,7 +1,8 @@
 import { memo } from "react";
-import { Handle, Position, NodeProps } from "reactflow";
+import { Handle, Position, NodeProps, useReactFlow } from "reactflow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   Zap, 
   GitBranch, 
@@ -15,7 +16,8 @@ import {
   Clock,
   Bell,
   AtSign,
-  Camera
+  Camera,
+  X
 } from "lucide-react";
 
 const iconMap = {
@@ -42,18 +44,34 @@ const triggerIconMap = {
   story_reply_received: Camera,
 };
 
-export const TriggerNode = memo(({ data }: NodeProps) => {
+export const TriggerNode = memo(({ data, id }: NodeProps) => {
+  const { deleteElements } = useReactFlow();
   const TriggerIcon = data.triggerType ? triggerIconMap[data.triggerType as keyof typeof triggerIconMap] || Bell : Bell;
   
+  const handleDelete = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
+  
   return (
-    <Card className="min-w-[280px] border-l-4 border-l-chart-3 shadow-md hover-elevate">
+    <Card className="group min-w-[280px] border-l-4 border-l-chart-3 shadow-md hover-elevate">
       <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-chart-3" />
       <CardHeader className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-chart-3/10 flex items-center justify-center">
-            <TriggerIcon className="w-4 h-4 text-chart-3" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-chart-3/10 flex items-center justify-center">
+              <TriggerIcon className="w-4 h-4 text-chart-3" />
+            </div>
+            <CardTitle className="text-sm font-semibold">Trigger</CardTitle>
           </div>
-          <CardTitle className="text-sm font-semibold">Trigger</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+            onClick={handleDelete}
+            data-testid={`button-delete-${id}`}
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
@@ -72,20 +90,36 @@ export const TriggerNode = memo(({ data }: NodeProps) => {
 
 TriggerNode.displayName = "TriggerNode";
 
-export const ConditionNode = memo(({ data }: NodeProps) => {
+export const ConditionNode = memo(({ data, id }: NodeProps) => {
+  const { deleteElements } = useReactFlow();
   const Icon = iconMap.condition;
   
+  const handleDelete = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
+  
   return (
-    <Card className="min-w-[280px] border-l-4 border-l-chart-2 shadow-md hover-elevate">
+    <Card className="group min-w-[280px] border-l-4 border-l-chart-2 shadow-md hover-elevate">
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-chart-2" />
       <Handle type="source" position={Position.Bottom} id="true" className="w-3 h-3 bg-chart-2" style={{ left: '33%' }} />
       <Handle type="source" position={Position.Bottom} id="false" className="w-3 h-3 bg-chart-2" style={{ left: '66%' }} />
       <CardHeader className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-chart-2/10 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-chart-2" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-chart-2/10 flex items-center justify-center">
+              <Icon className="w-4 h-4 text-chart-2" />
+            </div>
+            <CardTitle className="text-sm font-semibold">Condition</CardTitle>
           </div>
-          <CardTitle className="text-sm font-semibold">Condition</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+            onClick={handleDelete}
+            data-testid={`button-delete-${id}`}
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
@@ -119,19 +153,35 @@ export const ConditionNode = memo(({ data }: NodeProps) => {
 
 ConditionNode.displayName = "ConditionNode";
 
-export const ActionNode = memo(({ data }: NodeProps) => {
+export const ActionNode = memo(({ data, id }: NodeProps) => {
+  const { deleteElements } = useReactFlow();
   const ActionIcon = data.actionType ? actionIconMap[data.actionType as keyof typeof actionIconMap] || MessageSquare : MessageSquare;
   
+  const handleDelete = () => {
+    deleteElements({ nodes: [{ id }] });
+  };
+  
   return (
-    <Card className="min-w-[280px] border-l-4 border-l-primary shadow-md hover-elevate">
+    <Card className="group min-w-[280px] border-l-4 border-l-primary shadow-md hover-elevate">
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-primary" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-primary" />
       <CardHeader className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
-            <ActionIcon className="w-4 h-4 text-primary" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+              <ActionIcon className="w-4 h-4 text-primary" />
+            </div>
+            <CardTitle className="text-sm font-semibold">Action</CardTitle>
           </div>
-          <CardTitle className="text-sm font-semibold">Action</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+            onClick={handleDelete}
+            data-testid={`button-delete-${id}`}
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
