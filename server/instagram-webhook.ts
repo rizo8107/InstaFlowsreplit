@@ -16,7 +16,6 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
     this.appSecret = process.env.INSTAGRAM_APP_SECRET || '';
     this.verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || '';
     
-    // Determine callback URL
     const baseUrl = process.env.OAUTH_BASE_URL || 
       (process.env.REPLIT_DOMAINS 
         ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
@@ -27,69 +26,48 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
 
   async subscribeToWebhooks(instagramUserId: string, accessToken: string): Promise<boolean> {
     try {
-      console.log(`Attempting to subscribe webhooks for Instagram user: ${instagramUserId}`);
+      console.log(`Subscribing webhooks for Instagram account: ${instagramUserId}`);
       
-      // For Instagram Graph API v24.0+, webhook subscriptions are managed at the APP level
-      // in the Meta App Dashboard, not programmatically per account
-      // However, we can verify the app-level subscription exists
+      // Per Instagram documentation: POST /{instagram-account-id}/subscribed_apps
+      // Note: Uses graph.facebook.com, not graph.instagram.com
+      const subscribeUrl = `https://graph.facebook.com/v24.0/${instagramUserId}/subscribed_apps`;
       
-      // Check if app has webhook subscriptions configured
-      const appAccessToken = `${this.appId}|${this.appSecret}`;
+      const response = await fetch(subscribeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          subscribed_fields: 'comments,messages,mentions,story_insights,live_comments,message_reactions,messaging_postbacks',
+          access_token: accessToken,
+        }).toString(),
+      });
       
-      // Get app subscriptions
-      const subscriptionResponse = await fetch(
-        `https://graph.facebook.com/v24.0/${this.appId}/subscriptions?access_token=${appAccessToken}`
-      );
+      const data = await response.json();
       
-      const subscriptionData = await subscriptionResponse.json();
-      console.log("App webhook subscriptions:", JSON.stringify(subscriptionData, null, 2));
-      
-      if (subscriptionData.data && subscriptionData.data.length > 0) {
-        const instagramSubscription = subscriptionData.data.find((sub: any) => sub.object === 'instagram');
-        
-        if (instagramSubscription) {
-          console.log("✅ Instagram webhook subscription exists:", instagramSubscription);
-          return true;
-        }
-      }
-      
-      // If no subscription exists, we need to create it programmatically
-      // Note: This requires the app to have the necessary permissions
-      console.log("Attempting to create webhook subscription...");
-      
-      const createResponse = await fetch(
-        `https://graph.facebook.com/v24.0/${this.appId}/subscriptions`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            object: 'instagram',
-            callback_url: this.callbackUrl,
-            verify_token: this.verifyToken,
-            fields: 'comments,messages,mentions,story_insights',
-            access_token: appAccessToken,
-          }).toString(),
-        }
-      );
-      
-      const createData = await createResponse.json();
-      
-      if (createResponse.ok && createData.success) {
-        console.log("✅ Webhook subscription created successfully:", createData);
+      if (response.ok && data.success) {
+        console.log(`✅ Webhooks subscribed successfully for account ${instagramUserId}`);
         return true;
       } else {
-        console.error("❌ Failed to create webhook subscription:", createData);
+        console.error(`❌ Failed to subscribe webhooks for account ${instagramUserId}:`, data);
         
-        // If automatic subscription fails, provide manual setup instructions
-        console.log("\n=== MANUAL WEBHOOK SETUP REQUIRED ===");
-        console.log("Go to: https://developers.facebook.com/apps/" + this.appId + "/webhooks/");
-        console.log("1. Select 'Instagram' as the object");
-        console.log("2. Click 'Subscribe to this object'");
-        console.log("3. Callback URL:", this.callbackUrl);
-        console.log("4. Verify Token:", this.verifyToken);
-        console.log("5. Subscribe to: comments, messages, mentions, story_insights");
+        // Check if it's a permissions error
+        if (data.error && data.error.code === 200) {
+          console.log("\n⚠️ Permissions issue detected.");
+          console.log("Make sure your app has the following permissions:");
+          console.log("- instagram_business_basic");
+          console.log("- instagram_business_manage_comments");
+          console.log("- instagram_business_manage_messages");
+        }
+        
+        // Provide manual setup instructions
+        console.log("\n=== MANUAL WEBHOOK SETUP (Required) ===");
+        console.log(`1. Go to: https://developers.facebook.com/apps/${this.appId}/webhooks/`);
+        console.log('2. Select "Instagram" as the object type');
+        console.log(`3. Callback URL: ${this.callbackUrl}`);
+        console.log(`4. Verify Token: ${this.verifyToken}`);
+        console.log('5. Subscribe to fields: comments, messages, mentions, story_insights');
+        console.log('6. Click "Verify and Save"');
         
         return false;
       }
@@ -101,19 +79,40 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
 
   async checkWebhookSubscription(instagramUserId: string, accessToken: string): Promise<any> {
     try {
-      const appAccessToken = `${this.appId}|${this.appSecret}`;
+      // Check account-level subscriptions
+      // GET /{instagram-account-id}/subscribed_apps
+      // Note: Uses graph.facebook.com, not graph.instagram.com
+      const checkUrl = `https://graph.facebook.com/v24.0/${instagramUserId}/subscribed_apps`;
       
-      const response = await fetch(
+      const response = await fetch(`${checkUrl}?access_token=${accessToken}`);
+      const data = await response.json();
+      
+      if (response.ok && data.data) {
+        const subscribedFields = data.data.length > 0 ? data.data[0].subscribed_fields : [];
+        
+        return {
+          configured: subscribedFields.length > 0,
+          subscriptions: subscribedFields,
+          accountId: instagramUserId,
+          callbackUrl: this.callbackUrl,
+        };
+      }
+      
+      // Also check app-level subscriptions as fallback
+      const appAccessToken = `${this.appId}|${this.appSecret}`;
+      const appResponse = await fetch(
         `https://graph.facebook.com/v24.0/${this.appId}/subscriptions?access_token=${appAccessToken}`
       );
       
-      const data = await response.json();
+      const appData = await appResponse.json();
+      const instagramSub = appData.data?.find((sub: any) => sub.object === 'instagram');
       
       return {
-        configured: data.data && data.data.length > 0,
-        subscriptions: data.data || [],
+        configured: !!instagramSub,
+        accountSubscriptions: data.data || [],
+        appSubscriptions: instagramSub || null,
         callbackUrl: this.callbackUrl,
-        verifyToken: this.verifyToken,
+        note: "Webhook subscriptions can be configured at app-level (Meta Dashboard) or account-level (API)",
       };
     } catch (error) {
       console.error("Error checking webhook subscription:", error);
@@ -128,8 +127,10 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
     return `
 === INSTAGRAM WEBHOOK SETUP ===
 
-Your app needs webhook subscriptions configured in Meta App Dashboard.
+Your app needs webhook subscriptions configured. There are TWO ways to do this:
 
+METHOD 1: Meta App Dashboard (Recommended - One-time setup for ALL accounts)
+------------------------------------------------------------------------
 1. Go to: https://developers.facebook.com/apps/${this.appId}/webhooks/
 
 2. Select "Instagram" as the object type
@@ -143,15 +144,24 @@ Your app needs webhook subscriptions configured in Meta App Dashboard.
    ✓ messages  
    ✓ mentions
    ✓ story_insights
+   ✓ live_comments
+   ✓ message_reactions
 
 5. Click "Verify and Save"
 
-Once configured, Instagram will automatically send webhook events for all
-connected Instagram Business accounts to your app.
+Once configured, webhooks work automatically for ALL connected Instagram accounts!
 
-Note: Webhook subscriptions are at the APP level, not per-account. This means
-once you set it up, ALL Instagram accounts that authorize your app will 
-automatically send webhooks - just like ManyChat!
+METHOD 2: API (Per-account subscription - Already automated in this app)
+------------------------------------------------------------------------
+The app automatically calls POST /{instagram-account-id}/subscribed_apps
+when each account connects via OAuth.
+
+Required scopes:
+- instagram_business_basic
+- instagram_business_manage_comments
+- instagram_business_manage_messages
+
+Note: Most apps use METHOD 1 (Meta Dashboard) as it's simpler and works for all accounts.
 `;
   }
 }

@@ -1,44 +1,75 @@
 # Instagram Webhook Auto-Setup Guide
 
-## How ManyChat-Style Webhooks Work
+## Two Ways to Enable Webhooks
 
-When you connect an Instagram account to ManyChat (or any automation platform), webhooks start working **automatically**. Here's how:
+Instagram webhooks can be configured in **TWO ways**:
 
-### The Secret: App-Level Webhook Subscriptions
+### Method 1: Meta App Dashboard (Recommended) ✅
+**Best for:** Production apps, one-time setup for all accounts
 
-Unlike what many think, Instagram webhooks are configured at the **APP level**, not per-account:
+- Configure once in Meta Dashboard
+- Works automatically for ALL Instagram accounts
+- No API calls needed per account
+- Easiest to set up and maintain
 
-1. **One-Time Setup**: Configure webhooks in Meta App Dashboard (just once)
-2. **Automatic Activation**: When ANY user connects their Instagram account via OAuth, Instagram automatically starts sending webhooks for that account
-3. **No Per-Account Setup**: You don't need to subscribe webhooks for each account individually
+### Method 2: API Per-Account Subscription 🔄
+**Best for:** Dynamic apps, programmatic control
 
-This is exactly how ManyChat, MobileMonkey, and other automation platforms work!
+- API call when each account connects
+- Per-account subscription via `/subscribed_apps` endpoint
+- Already automated in this app!
+- Requires proper OAuth scopes
+
+**This app uses BOTH methods!** It tries API subscription automatically, but Meta Dashboard setup is still recommended.
+
+## How It Works (Official Instagram API)
+
+According to Instagram's official documentation, webhook subscriptions work via:
+
+```bash
+POST https://graph.facebook.com/v24.0/{INSTAGRAM_ACCOUNT_ID}/subscribed_apps
+?subscribed_fields=comments,messages,mentions,story_insights
+&access_token={USER_ACCESS_TOKEN}
+```
+
+**Important:** Use `graph.facebook.com` (not `graph.instagram.com`) for webhook subscriptions.
+
+**Required OAuth Scopes:**
+- `instagram_business_basic`
+- `instagram_business_manage_comments`
+- `instagram_business_manage_messages`
+
+**Response on Success:**
+```json
+{
+  "success": true
+}
+```
 
 ## Current Implementation
 
-Your app now has **automatic webhook subscription** built-in:
+Your app automatically attempts webhook subscription when a user connects Instagram:
 
-✅ **When a user connects Instagram:**
-- OAuth authentication completes
-- Account is saved to database
-- **NEW**: System automatically attempts to subscribe to webhooks
-- If successful: Webhooks are active immediately
-- If manual setup needed: Instructions are displayed in server logs
+✅ **OAuth completes** → Account saved to database  
+✅ **API subscription fires** (non-blocking, background)  
+✅ **Success:** Webhooks active immediately  
+✅ **Failure:** Instructions logged for manual setup
 
 ## Setup Instructions
 
-### Step 1: Set Up Webhook Verify Token
+### Quick Setup (Method 1 - Recommended)
 
-```bash
-# Generate a secure token (already handled in your app)
-# Or use this one: your-secure-webhook-token-123
-```
+#### Step 1: Set Webhook Verify Token
 
-Add to Replit Secrets:
-- Key: `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
-- Value: A secure random string (generate via `/api/webhook-token/generate`)
+1. Generate a secure token (or use existing one):
+   - In your app: Navigate to webhook settings
+   - Or generate via: `/api/webhook-token/generate`
 
-### Step 2: Configure Webhooks in Meta App Dashboard
+2. Add to Replit Secrets:
+   - Key: `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
+   - Value: Your secure random string
+
+#### Step 2: Configure in Meta App Dashboard
 
 1. **Go to Meta for Developers:**
    - URL: https://developers.facebook.com/apps/4224943747791118/webhooks/
@@ -48,93 +79,40 @@ Add to Replit Secrets:
 
 3. **Add Webhook Configuration:**
    - **Callback URL**: `https://insta-flows-nirmal40.replit.app/api/webhooks/instagram`
-   - **Verify Token**: (Same as INSTAGRAM_WEBHOOK_VERIFY_TOKEN)
+   - **Verify Token**: (Same as `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`)
 
 4. **Click "Verify and Save"**
-   - Meta will send a GET request to verify your endpoint
-   - If successful, you'll see "✓ Verified"
+   - Meta sends a GET request to verify your endpoint
+   - If successful: ✅ "Verified" appears
 
-5. **Subscribe to Fields:**
-   After verification, subscribe to these webhook fields:
-   - ✅ `comments` - Comment events
+5. **Subscribe to Webhook Fields:**
+   After verification, subscribe to:
+   - ✅ `comments` - Comment events on media
    - ✅ `messages` - Direct message events
-   - ✅ `mentions` - Mention/tag events
+   - ✅ `mentions` - Mention/tag events in posts/stories
    - ✅ `story_insights` - Story reply events
+   - ✅ `live_comments` - Live video comment events
+   - ✅ `message_reactions` - Message reaction events
 
 6. **Click "Subscribe"** for each field
 
-### Step 3: Test Webhook Delivery
+### Advanced Setup (Method 2 - Automatic API)
 
-Once configured:
+The app automatically calls:
 
-1. **Connect an Instagram account** via OAuth (if not already connected)
-2. **Send a DM** to that Instagram account
-3. **Check server logs** - You should see:
-   ```
-   Webhook received: {...}
-   Processing webhook for Instagram user ID: xxxxx
-   ```
-4. **Check Activity page** - The webhook event should appear
-
-## How It Works
-
-### Architecture
-
-```
-Instagram User Action (DM/Comment)
-         ↓
-Instagram Platform detects event
-         ↓
-Checks: "Is there an app authorized for this account?"
-         ↓
-YES → Sends webhook to YOUR app
-         ↓
-Your app receives POST /api/webhooks/instagram
-         ↓
-Finds matching Instagram account in database
-         ↓
-Creates webhook event record
-         ↓
-Triggers matching flows
-         ↓
-Executes automation actions
+```bash
+POST /v24.0/{instagram_account_id}/subscribed_apps
 ```
 
-### Key Points
+**When:** During OAuth callback (non-blocking)  
+**Fields:** `comments,messages,mentions,story_insights,live_comments,message_reactions,messaging_postbacks`
 
-1. **App-Level Configuration**: Webhooks are configured once for the entire app
-2. **Automatic Routing**: Instagram automatically sends webhooks for ALL authorized accounts
-3. **No Per-Account Setup**: Just connect via OAuth, webhooks work immediately
-4. **Secure Verification**: Uses verify token to ensure webhooks are from Instagram
-
-## Automatic Subscription (New Feature)
-
-Your app now automatically attempts to subscribe to webhooks when:
-
-1. A user connects their Instagram account via OAuth
-2. The OAuth callback completes successfully
-3. System calls Instagram Graph API to check/create webhook subscription
-4. If successful: ✅ Webhooks active immediately
-5. If fails: ⚠️ Manual setup instructions logged
-
-### Check Webhook Status
-
+**Check Status:**
 ```bash
 GET /api/webhook-status
 ```
 
-Returns:
-```json
-{
-  "configured": true/false,
-  "subscriptions": [...],
-  "callbackUrl": "https://...",
-  "setupInstructions": "..."
-}
-```
-
-### Manually Trigger Subscription
-
+**Manual Trigger:**
 ```bash
 POST /api/webhook-subscribe
 {
@@ -142,106 +120,273 @@ POST /api/webhook-subscribe
 }
 ```
 
-## Common Issues
+## Webhook Architecture
 
-### Issue 1: "Webhook not receiving events"
+### How Webhooks Flow
 
-**Cause**: Webhook not configured in Meta Dashboard
-**Solution**: Follow Step 2 above to configure webhooks
+```
+Instagram User Action (DM/Comment/Mention)
+         ↓
+Instagram Platform detects event
+         ↓
+Checks: "Is there an app authorized for this account?"
+         ↓
+YES → Sends webhook to YOUR callback URL
+         ↓
+Your app receives POST /api/webhooks/instagram
+         ↓
+Validates signature & verify token
+         ↓
+Finds matching Instagram account in database
+         ↓
+Creates webhook event record
+         ↓
+Triggers matching automation flows
+         ↓
+Executes actions (reply, DM, etc.)
+```
 
-### Issue 2: "403 Forbidden on webhook verification"
+### Webhook Payload Structure
 
-**Cause**: Verify token mismatch
-**Solution**: 
-1. Check `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` in Replit Secrets
-2. Ensure it matches the token in Meta App Dashboard
+**Verification Request (GET):**
+```
+GET /api/webhooks/instagram?hub.mode=subscribe&hub.challenge=123456&hub.verify_token=your_token
+```
 
-### Issue 3: "Webhook receives events but flow doesn't trigger"
+**Event Notification (POST):**
+```json
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "instagram_account_id",
+      "time": 1234567890,
+      "messaging": [
+        {
+          "sender": { "id": "sender_id" },
+          "recipient": { "id": "recipient_id" },
+          "timestamp": 1234567890,
+          "message": {
+            "mid": "message_id",
+            "text": "Hello!"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
 
-**Cause**: Flow trigger doesn't match event type
-**Solution**:
-1. Check flow trigger type (DM, Comment, etc.)
-2. Verify trigger conditions match incoming event data
+## Webhook Fields & Permissions
 
-### Issue 4: "Cannot verify webhook URL"
-
-**Cause**: App not running or URL incorrect
-**Solution**:
-1. Ensure your app is deployed and running
-2. Verify callback URL is correct: `https://insta-flows-nirmal40.replit.app/api/webhooks/instagram`
-3. Check server logs for verification request
+| Field | Permissions Required | Events Triggered |
+|-------|---------------------|------------------|
+| `comments` | `instagram_business_basic`<br>`instagram_business_manage_comments` | New comments on media<br>@mentions in comments |
+| `messages` | `instagram_business_basic`<br>`instagram_business_manage_messages` | New direct messages<br>Message reactions |
+| `mentions` | Included in `comments` | @mentions in posts/stories |
+| `story_insights` | `instagram_business_basic` | Story metrics & replies |
+| `live_comments` | `instagram_business_basic`<br>`instagram_business_manage_comments` | Live video comments |
+| `message_reactions` | `instagram_business_basic`<br>`instagram_business_manage_messages` | Emoji reactions to messages |
 
 ## Testing Webhooks
 
-### Manual Test
+### Test 1: Direct Message (DM)
 
-1. **DM Test:**
-   - Send a DM to your connected Instagram account
-   - Check server logs for webhook receipt
-   - Verify flow execution in Activity page
+1. **Send a DM** to your connected Instagram account
+2. **Message:** "Test webhook"
 
-2. **Comment Test:**
-   - Comment on a post from connected account
-   - Check webhook delivery
-   - Verify flow trigger
+**Expected Results:**
+```
+Server logs:
+✅ Webhook received: {...}
+✅ Processing webhook for Instagram user ID: xxxxx
+✅ Saving webhook event: dm_received
+✅ Flow execution started
 
-3. **Mention Test:**
-   - Mention the account in a post/comment
-   - Check webhook receipt
-   - Verify automation execution
-
-### Debug Mode
-
-Enable detailed logging:
-```bash
-# Server logs show:
-- Webhook received: {...}
-- Processing webhook for Instagram user ID: xxxxx
-- Saving webhook event: dm_received
-- Triggering flows for: dm_received
-- Flow execution started: {...}
+Activity page:
+✅ New webhook event appears
+✅ Flow execution shows "Success"
 ```
 
-## Security Best Practices
+### Test 2: Comment
 
-1. **Verify Token**: Use a strong, random token (min 32 characters)
-2. **HTTPS Only**: Always use HTTPS for webhook URLs
-3. **Validate Payload**: App verifies Instagram signature (built-in)
-4. **Rate Limiting**: Consider adding rate limits for webhook endpoint
+1. **Comment** on a post from your connected account
+2. **Comment:** "Test comment webhook"
+
+**Expected Results:**
+- ✅ Webhook event in Activity page
+- ✅ Server logs confirm receipt
+- ✅ Flow triggers (if configured)
+
+### Test 3: Mention
+
+1. **Create story** or post
+2. **Mention:** `@yourconnectedaccount`
+
+**Expected Results:**
+- ✅ Mention webhook received
+- ✅ Flow execution (if configured)
+
+## Check Webhook Status
+
+### Via API Endpoint
+
+**Browser (while logged in):**
+```
+https://insta-flows-nirmal40.replit.app/api/webhook-status
+```
+
+**Response when configured:**
+```json
+{
+  "configured": true,
+  "accountSubscriptions": ["comments", "messages", "mentions"],
+  "appSubscriptions": {
+    "object": "instagram",
+    "callback_url": "https://...",
+    "fields": ["comments", "messages", "mentions", "story_insights"]
+  }
+}
+```
+
+### Via Meta Dashboard
+
+1. Go to: https://developers.facebook.com/apps/4224943747791118/webhooks/
+2. Select "Instagram" 
+3. Look for:
+   - ✅ Green checkmark = Verified
+   - ✅ "Subscribed" badges = Active
+
+### Via Server Logs
+
+When a webhook arrives, you'll see:
+```
+Webhook received: {object: "instagram", entry: [...]}
+Processing webhook for Instagram user ID: 123456789
+Saving webhook event: dm_received
+Triggering flows for: dm_received
+```
+
+## Troubleshooting
+
+### Issue: No Webhooks Received
+
+**Checklist:**
+- [ ] Webhook configured in Meta Dashboard? (green checkmark)
+- [ ] `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` set in Replit Secrets?
+- [ ] Token matches Meta Dashboard verify token?
+- [ ] Instagram account connected via OAuth?
+- [ ] App is running? (workflow status: RUNNING)
+- [ ] Account is Business/Creator? (Personal accounts don't support webhooks)
+
+**Solution:**
+1. Complete Meta Dashboard setup (Method 1)
+2. Verify token matches exactly
+3. Ensure account is Instagram Business/Creator
+
+### Issue: Webhook Verified but No Events
+
+**Cause:** Fields not subscribed  
+**Solution:**
+1. Go to Meta Dashboard → Webhooks
+2. Ensure "Subscribed" shows for: comments, messages, mentions
+3. Click "Subscribe" if not already subscribed
+
+### Issue: API Subscription Fails (403/400 Error)
+
+**Cause:** Missing permissions or incorrect scopes  
+**Solution:**
+1. Verify OAuth scopes include:
+   - `instagram_business_basic`
+   - `instagram_business_manage_comments`
+   - `instagram_business_manage_messages`
+2. Re-authorize Instagram account with correct scopes
+3. Use Meta Dashboard setup (Method 1) as fallback
+
+### Issue: Webhooks Work but Flows Don't Trigger
+
+**Checklist:**
+- [ ] Flow trigger type matches event? (DM trigger for DM events)
+- [ ] Trigger conditions correct?
+- [ ] Flow is enabled/active?
+- [ ] Flow assigned to correct Instagram account?
+
+**Debug:**
+1. Check Activity page for webhook events
+2. Verify event type matches flow trigger
+3. Check flow execution logs for errors
+
+## Security & Validation
+
+### Signature Validation
+
+Instagram signs all webhook payloads with SHA256:
+
+```javascript
+// Webhook handler validates signature
+const signature = req.headers['x-hub-signature-256'];
+const expectedSignature = crypto
+  .createHmac('sha256', APP_SECRET)
+  .update(JSON.stringify(req.body))
+  .digest('hex');
+
+if (signature === `sha256=${expectedSignature}`) {
+  // Valid webhook from Instagram
+}
+```
+
+### Best Practices
+
+1. ✅ **Use HTTPS** - Required by Instagram
+2. ✅ **Validate signatures** - Verify all payloads
+3. ✅ **Strong verify token** - Min 32 random characters
+4. ✅ **Handle duplicates** - Instagram may retry failed webhooks
+5. ✅ **Respond quickly** - Return 200 OK within 20 seconds
+6. ✅ **Process async** - Handle heavy operations in background
 
 ## Production Checklist
 
 Before going live:
 
-- [ ] INSTAGRAM_WEBHOOK_VERIFY_TOKEN is set in Replit Secrets
-- [ ] Webhooks configured in Meta App Dashboard
+- [ ] `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` set in Replit Secrets
+- [ ] `INSTAGRAM_APP_ID` configured
+- [ ] `INSTAGRAM_APP_SECRET` configured
+- [ ] `OAUTH_BASE_URL` set to production domain
+- [ ] Webhooks configured in Meta Dashboard
 - [ ] All required fields subscribed (comments, messages, mentions, story_insights)
-- [ ] Webhook URL verified successfully
-- [ ] Test DM/comment triggers flow correctly
-- [ ] Activity page shows webhook events
-- [ ] Flow executions complete successfully
+- [ ] Webhook URL verified successfully (green checkmark)
+- [ ] Test DM triggers webhook ✓
+- [ ] Test comment triggers webhook ✓
+- [ ] Activity page shows webhook events ✓
+- [ ] Flow executions complete successfully ✓
+- [ ] App set to "Live" mode in Meta Dashboard
 
-## Comparison: Manual vs Auto Setup
+## Comparison: Dashboard vs API Setup
 
-### Manual Setup (Old Way)
-1. User connects Instagram
-2. Admin goes to Meta Dashboard
-3. Admin configures webhooks manually
-4. Admin subscribes to fields
-5. Webhooks start working
-
-### Auto Setup (New Way - Like ManyChat)
-1. User connects Instagram
-2. ✅ Webhooks configured automatically (or instructions shown)
-3. ✅ System subscribes to required fields
-4. ✅ Webhooks work immediately
+| Aspect | Meta Dashboard (Method 1) | API Subscription (Method 2) |
+|--------|--------------------------|----------------------------|
+| **Setup** | One-time manual | Automatic per account |
+| **Scope** | All accounts | Per account |
+| **Permissions** | App-level | Requires OAuth scopes |
+| **Maintenance** | Set and forget | Handled by app |
+| **Reliability** | Very high | Depends on API |
+| **Best For** | Production apps | Dynamic/multi-tenant apps |
 
 ## Next Steps
 
-1. Follow Step 2 to configure webhooks in Meta Dashboard (one-time setup)
-2. Connect Instagram accounts via OAuth
-3. Webhooks will automatically work for all connected accounts!
-4. Monitor Activity page for webhook events
-5. Create flows to automate responses
+1. ✅ **Set verify token** in Replit Secrets
+2. ✅ **Configure Meta Dashboard** (Method 1 - Recommended)
+3. ✅ **Connect Instagram accounts** via OAuth
+4. ✅ **Send test DM** to verify webhooks
+5. ✅ **Check Activity page** for webhook events
+6. ✅ **Create automation flows** to respond
 
-Your Instagram automation platform now works exactly like ManyChat! 🎉
+Your Instagram automation platform now has **professional-grade webhook integration** using official Instagram API methods! 🚀
+
+## Resources
+
+- **Instagram Webhooks Docs**: https://developers.facebook.com/docs/instagram-platform/webhooks
+- **Meta App Dashboard**: https://developers.facebook.com/apps/4224943747791118
+- **Webhook Subscriptions Guide**: See attached documentation
+- **Testing Guide**: `WEBHOOK_TESTING_GUIDE.md`
+- **OAuth Setup**: `INSTAGRAM_OAUTH_SETUP.md`
