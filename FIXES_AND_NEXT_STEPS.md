@@ -18,13 +18,22 @@ No account found for Instagram user ID: 17841403285682665
 
 ## 🛠️ What I Fixed
 
-### 1. **Database Token Management** ✅
+### 1. **🚨 CRITICAL: Removed Data Corruption Bug** ✅
+**What was happening**: When a webhook arrived for an unknown Instagram account, the system was automatically updating the first active account's Instagram User ID, causing severe data corruption.
+
+**Fixed**: 
+- Removed dangerous auto-mutation code completely
+- Webhooks for unknown accounts now safely skip with clear warning logs
+- No account data is ever modified by incoming webhooks
+- **Result**: Data integrity protected, accounts must be properly connected via OAuth
+
+### 2. **Database Token Management** ✅
 - Webhook verify token now stored in database
 - Auto-syncs from environment variables on first access
 - Production and development both use same database
 - **Result**: Production webhook verification now works
 
-### 2. **Enhanced Logging** ✅
+### 3. **Enhanced Logging** ✅
 Added detailed console logs to track:
 ```
 🔐 Webhook Verification Request:
@@ -35,7 +44,7 @@ Added detailed console logs to track:
 ✅ Webhook verified successfully!
 ```
 
-### 3. **Auto-Subscription Logging** ✅
+### 4. **Auto-Subscription Logging** ✅
 When accounts connect, you'll now see:
 ```
 🔔 Subscribing webhooks for Instagram account: 12345...
