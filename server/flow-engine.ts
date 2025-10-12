@@ -297,7 +297,8 @@ export class FlowEngine {
   private findNextNode(currentNodeId: string, branchLabel?: string): any {
     const edge = this.flow.edges.find(e => {
       if (branchLabel) {
-        return e.source === currentNodeId && e.id.includes(branchLabel);
+        // Check sourceHandle for condition branching (true/false)
+        return e.source === currentNodeId && e.sourceHandle === branchLabel;
       }
       return e.source === currentNodeId;
     });
