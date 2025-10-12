@@ -22,10 +22,9 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
-- **Instagram Private Reply Implementation (October 12, 2025)**: Implemented proper Private Reply API for comment-triggered DM actions
-  - **Messenger Platform Integration**: Added Facebook Page ID and Page Access Token support to account schema
-  - **Private Reply API**: Implemented `sendPrivateReply` using `graph.facebook.com/v24.0/{PAGE_ID}/messages` with `messaging_type: "RESPONSE"`
-  - **Smart Routing**: Flow engine automatically detects comment triggers and uses Private Reply (text-only) vs regular DMs (with button template support)
+- **Comment Flow DM Actions Fixed (October 12, 2025)**: Fixed DM actions for comment-triggered flows
+  - **sender_id Mapping**: Comment events map `from_id` to `sender_id` for send_dm actions
+  - **Unified DM Approach**: All DM actions use `sender_id` with Instagram Graph API (no Private Reply complexity)
   - **Condition Edge Routing Fixed**: Fixed flow engine to check `sourceHandle` instead of `edge.id` for proper condition branching (true/false paths)
 
 - **Comment Flow Actions Fixed (October 12, 2025)**: Fixed variable extraction for comment events to enable DM actions
@@ -175,9 +174,10 @@ Required secrets:
 ## Technical Notes
 - Uses PostgreSQL database with Drizzle ORM for persistence
 - Instagram API calls require valid access tokens with `instagram_business_manage_messages` and `instagram_business_manage_comments` scopes
-- **DM Actions**: 
-  - **From Comments (Private Reply)**: Uses Messenger Platform API `POST /v24.0/{PAGE_ID}/messages` with `{recipient: {comment_id: "..."}, message: {text: "..."}, messaging_type: "RESPONSE"}`. Requires Facebook Page ID and Page Access Token configured in account settings. Text-only (button templates not supported).
-  - **From DMs (Direct Message)**: Uses Instagram API `POST /{instagram_user_id}/messages` with `{recipient: {id: sender_id}, message: {text: "..."}}`. Supports button templates.
+- **Comment Actions**: 
+  - **Reply to Comment**: Uses `POST /{comment_id}/replies` with `{message: "..."}` to reply publicly on Instagram
+  - **Send DM from Comment**: Uses `sender_id` (mapped from `from_id`) with endpoint `POST /{instagram_user_id}/messages` and body `{recipient: {id: sender_id}, message: {text: "..."}}`
+- **DM Actions**: Uses `POST /{instagram_user_id}/messages` with `{recipient: {id: sender_id}, message: {text: "..."}}`. Supports button templates.
 - Webhooks need to be configured in Meta for Developers console
 - Flow execution is asynchronous with error handling
 - All dates stored as JavaScript Date objects  

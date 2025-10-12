@@ -159,54 +159,31 @@ export class FlowEngine {
         }
 
       case "send_dm":
-        if (config.message) {
-          // Check if this is a comment-triggered DM (Private Reply)
-          if (this.context.variables.comment_id) {
-            // Private Reply only supports text messages, not button templates
+        if (this.context.variables.sender_id && config.message) {
+          console.log(`[FlowEngine] Sending DM to sender ${this.context.variables.sender_id}: ${config.message}`);
+          try {
+            let result;
+            // Check if button template is configured
             if (config.buttons && Array.isArray(config.buttons) && config.buttons.length > 0) {
-              console.log(`[FlowEngine] Warning: Button templates not supported for Private Reply, sending text-only message`);
+              console.log(`[FlowEngine] Sending DM with button template (${config.buttons.length} buttons)`);
+              result = await this.api.sendButtonTemplate(
+                this.context.variables.sender_id,
+                config.message,
+                config.subtitle,
+                config.buttons
+              );
+            } else {
+              // Regular text message
+              result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.message);
             }
-            console.log(`[FlowEngine] Sending Private Reply from comment ${this.context.variables.comment_id}: ${config.message}`);
-            try {
-              const result = await this.api.sendPrivateReply(this.context.variables.comment_id, config.message);
-              console.log(`[FlowEngine] Private Reply sent successfully, result:`, result);
-              return { success: true, action: "send_dm", method: "private_reply", comment_id: this.context.variables.comment_id, message: config.message, result };
-            } catch (error: any) {
-              console.error(`[FlowEngine] Failed to send Private Reply:`, error);
-              throw error;
-            }
-          }
-          // Regular DM to existing conversation
-          else if (this.context.variables.sender_id) {
-            console.log(`[FlowEngine] Sending DM to sender ${this.context.variables.sender_id}: ${config.message}`);
-            try {
-              let result;
-              // Check if button template is configured
-              if (config.buttons && Array.isArray(config.buttons) && config.buttons.length > 0) {
-                console.log(`[FlowEngine] Sending DM with button template (${config.buttons.length} buttons)`);
-                result = await this.api.sendButtonTemplate(
-                  this.context.variables.sender_id,
-                  config.message,
-                  config.subtitle,
-                  config.buttons
-                );
-              } else {
-                // Regular text message
-                result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.message);
-              }
-              console.log(`[FlowEngine] DM sent successfully, result:`, result);
-              return { success: true, action: "send_dm", method: "direct_message", sender_id: this.context.variables.sender_id, message: config.message, result };
-            } catch (error: any) {
-              console.error(`[FlowEngine] Failed to send DM:`, error);
-              throw error;
-            }
-          } else {
-            const errorMsg = `Missing sender_id or comment_id for send_dm action`;
-            console.log(`[FlowEngine] ${errorMsg}`);
-            throw new Error(errorMsg);
+            console.log(`[FlowEngine] DM sent successfully, result:`, result);
+            return { success: true, action: "send_dm", sender_id: this.context.variables.sender_id, message: config.message, result };
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to send DM:`, error);
+            throw error;
           }
         } else {
-          const errorMsg = "Missing message for send_dm action";
+          const errorMsg = `Missing sender_id or message for send_dm action (sender_id: ${this.context.variables.sender_id})`;
           console.log(`[FlowEngine] ${errorMsg}`);
           throw new Error(errorMsg);
         }
