@@ -28,9 +28,11 @@ export interface InstagramMessage {
 
 export class InstagramAPI {
   private accessToken: string;
+  private instagramUserId: string;
 
-  constructor(accessToken: string) {
+  constructor(accessToken: string, instagramUserId?: string) {
     this.accessToken = accessToken;
+    this.instagramUserId = instagramUserId || "";
   }
 
   // Comments
@@ -113,19 +115,32 @@ export class InstagramAPI {
 
   // Direct Messages
   async sendDirectMessage(recipientId: string, message: string): Promise<any> {
-    const response = await axios.post(
-      `${GRAPH_API_BASE}/me/messages`,
-      {
-        recipient: { id: recipientId },
-        message: { text: message },
-      },
-      {
-        params: {
-          access_token: this.accessToken,
+    try {
+      // Instagram requires the Page/User ID in the endpoint
+      const endpoint = this.instagramUserId 
+        ? `${GRAPH_API_BASE}/${this.instagramUserId}/messages`
+        : `${GRAPH_API_BASE}/me/messages`;
+      
+      console.log(`[InstagramAPI] Sending message to ${recipientId} via ${endpoint}`);
+      
+      const response = await axios.post(
+        endpoint,
+        {
+          recipient: { id: recipientId },
+          message: { text: message },
         },
-      }
-    );
-    return response.data;
+        {
+          params: {
+            access_token: this.accessToken,
+          },
+        }
+      );
+      console.log(`[InstagramAPI] Message sent successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`[InstagramAPI] Error sending message:`, error.response?.data || error.message);
+      throw error;
+    }
   }
 
   async getConversations(): Promise<any> {

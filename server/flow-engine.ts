@@ -26,25 +26,42 @@ export class FlowEngine {
   private extractVariables(triggerData: any): Record<string, any> {
     const variables: Record<string, any> = {};
     
-    if (triggerData.comment) {
-      variables.comment_id = triggerData.comment.id;
-      variables.message_text = triggerData.comment.text;
-      variables.username = triggerData.comment.from?.username || triggerData.comment.username;
-      variables.user_id = triggerData.comment.from?.id;
+    // Handle flat payload structure from webhooks
+    // Comments
+    if (triggerData.comment_id || triggerData.comment_text) {
+      variables.comment_id = triggerData.comment_id;
+      variables.comment_text = triggerData.comment_text;
+      variables.message_text = triggerData.comment_text; // Alias for conditions
+      variables.username = triggerData.from_username;
+      variables.user_id = triggerData.from_id;
+      variables.media_id = triggerData.media_id;
     }
     
-    if (triggerData.message) {
-      variables.message_id = triggerData.message.id;
-      variables.message_text = triggerData.message.text;
-      variables.username = triggerData.message.from?.username;
-      variables.user_id = triggerData.message.from?.id;
+    // DMs/Messages
+    if (triggerData.message_id || triggerData.message_text) {
+      variables.message_id = triggerData.message_id;
+      variables.message_text = triggerData.message_text;
+      variables.user_id = triggerData.sender_id;
+      variables.username = triggerData.sender_username; // May not always be available
     }
 
-    if (triggerData.mention) {
-      variables.mention_id = triggerData.mention.id;
-      variables.message_text = triggerData.mention.text;
-      variables.username = triggerData.mention.from?.username;
-      variables.user_id = triggerData.mention.from?.id;
+    // Mentions
+    if (triggerData.mention_id || triggerData.mention_text) {
+      variables.mention_id = triggerData.mention_id;
+      variables.mention_text = triggerData.mention_text;
+      variables.message_text = triggerData.mention_text; // Alias for conditions
+      variables.username = triggerData.from_username;
+      variables.user_id = triggerData.from_id;
+      variables.media_id = triggerData.media_id;
+    }
+
+    // Story replies
+    if (triggerData.reply_id || triggerData.reply_text) {
+      variables.reply_id = triggerData.reply_id;
+      variables.reply_text = triggerData.reply_text;
+      variables.message_text = triggerData.reply_text; // Alias for conditions
+      variables.username = triggerData.from_username;
+      variables.user_id = triggerData.from_id;
     }
 
     return variables;
@@ -106,16 +123,40 @@ export class FlowEngine {
       config.url = this.replaceVariables(config.url);
     }
 
+    console.log(`[FlowEngine] Executing action: ${actionType}`, {
+      config,
+      variables: this.context.variables,
+    });
+
     switch (actionType) {
       case "reply_comment":
         if (this.context.variables.comment_id && config.message) {
-          await this.api.replyToComment(this.context.variables.comment_id, config.message);
+          console.log(`[FlowEngine] Replying to comment ${this.context.variables.comment_id}: ${config.message}`);
+          try {
+            await this.api.replyToComment(this.context.variables.comment_id, config.message);
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to reply to comment:`, error.response?.data || error.message);
+            throw error;
+          }
+        } else {
+          console.log(`[FlowEngine] Missing comment_id or message for reply_comment action`);
         }
         break;
 
       case "send_dm":
         if (this.context.variables.user_id && config.message) {
-          await this.api.sendDirectMessage(this.context.variables.user_id, config.message);
+          console.log(`[FlowEngine] Sending DM to ${this.context.variables.user_id}: ${config.message}`);
+          try {
+            await this.api.sendDirectMessage(this.context.variables.user_id, config.message);
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to send DM:`, error.response?.data || error.message);
+            throw error;
+          }
+        } else {
+          console.log(`[FlowEngine] Missing user_id or message for send_dm action`, {
+            user_id: this.context.variables.user_id,
+            message: config.message,
+          });
         }
         break;
 

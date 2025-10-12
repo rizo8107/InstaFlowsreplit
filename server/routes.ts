@@ -308,7 +308,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
               });
 
               try {
-                const api = new InstagramAPI(account.accessToken);
+                const api = new InstagramAPI(account.accessToken, account.instagramUserId || undefined);
                 const engine = new FlowEngine(api, flow, triggerData);
                 const result = await engine.execute();
 
@@ -441,7 +441,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
               });
 
               try {
-                const api = new InstagramAPI(account.accessToken);
+                const api = new InstagramAPI(account.accessToken, account.instagramUserId || undefined);
                 const engine = new FlowEngine(api, flow, triggerData);
                 const result = await engine.execute();
 
