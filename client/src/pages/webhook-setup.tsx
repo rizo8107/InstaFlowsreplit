@@ -1,9 +1,39 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Webhook, CheckCircle2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Webhook, CheckCircle2, AlertCircle, RefreshCw, Copy, Check, Key } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export default function WebhookSetup() {
   const webhookUrl = `${window.location.origin}/api/webhooks/instagram`;
+  const { toast } = useToast();
+  const [copiedToken, setCopiedToken] = useState(false);
+
+  const { data: tokenData } = useQuery<{ token: string | null; exists: boolean }>({
+    queryKey: ["/api/webhook-token"],
+  });
+
+  const generateTokenMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/webhook-token/generate"),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/webhook-token"] });
+      toast({
+        title: "Token Generated",
+        description: "Copy the token and add it to your Replit Secrets",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to generate token",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -35,6 +65,108 @@ export default function WebhookSetup() {
               </code>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Verify Token Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Key className="w-5 h-5 text-primary" />
+            <CardTitle>Verify Token</CardTitle>
+          </div>
+          <CardDescription>
+            Generate a secure token for webhook verification with Instagram
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {tokenData?.exists ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-md">
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-medium">Token configured</span>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Current Token:</h4>
+                <div className="flex gap-2">
+                  <Input
+                    value={tokenData.token || ''}
+                    readOnly
+                    type="password"
+                    className="font-mono text-sm"
+                    data-testid="input-verify-token"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (tokenData.token) {
+                        navigator.clipboard.writeText(tokenData.token);
+                        setCopiedToken(true);
+                        setTimeout(() => setCopiedToken(false), 2000);
+                        toast({
+                          title: "Copied!",
+                          description: "Verify token copied to clipboard",
+                        });
+                      }
+                    }}
+                    data-testid="button-copy-token"
+                  >
+                    {copiedToken ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use this token as the "Verify Token" when configuring the webhook in Meta for Developers
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateTokenMutation.mutate()}
+                disabled={generateTokenMutation.isPending}
+                className="gap-2"
+                data-testid="button-regenerate-token"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {generateTokenMutation.isPending ? "Generating..." : "Regenerate Token"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
+                <AlertCircle className="w-5 h-5 text-orange-500" />
+                <span className="text-sm font-medium">No token configured</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Generate a secure verify token to use when setting up webhooks in Meta for Developers
+              </p>
+              <Button
+                onClick={() => generateTokenMutation.mutate()}
+                disabled={generateTokenMutation.isPending}
+                className="gap-2"
+                data-testid="button-generate-token"
+              >
+                <Key className="w-4 h-4" />
+                {generateTokenMutation.isPending ? "Generating..." : "Generate Token"}
+              </Button>
+            </div>
+          )}
+          
+          {!tokenData?.exists && (
+            <div className="p-3 bg-muted rounded-md">
+              <p className="text-xs text-muted-foreground">
+                <strong>Important:</strong> After generating a token, you'll need to add it to your Replit Secrets:
+              </p>
+              <ol className="text-xs text-muted-foreground mt-2 space-y-1 list-decimal list-inside ml-2">
+                <li>Click "Generate Token" above</li>
+                <li>Copy the generated token</li>
+                <li>Go to Replit Secrets (Tools → Secrets)</li>
+                <li>Add key: <code className="bg-background px-1 rounded">INSTAGRAM_WEBHOOK_VERIFY_TOKEN</code></li>
+                <li>Paste the token as the value</li>
+                <li>Refresh this page to see the token configured</li>
+              </ol>
+            </div>
+          )}
         </CardContent>
       </Card>
 

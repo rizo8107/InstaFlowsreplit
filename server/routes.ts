@@ -145,6 +145,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Webhook Events
+  app.get("/api/webhook-events", async (req, res) => {
+    try {
+      const events = await storage.getAllWebhookEvents();
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/webhook-events/recent", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const events = await storage.getRecentWebhookEvents(limit);
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/executions/:id", async (req, res) => {
     try {
       const execution = await storage.getExecution(req.params.id);
@@ -269,6 +289,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Template use error:", error);
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Webhook Token Management
+  app.get("/api/webhook-token", async (req, res) => {
+    try {
+      const token = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+      res.json({ token: token || null, exists: !!token });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/webhook-token/generate", async (req, res) => {
+    try {
+      // Generate a secure random token
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Note: In production, you'd update this via a secure secrets management API
+      // For now, we return the token for the user to manually set in Replit Secrets
+      res.json({ 
+        token,
+        message: "Copy this token and add it to your Replit Secrets as INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

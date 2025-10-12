@@ -48,6 +48,8 @@ export interface IStorage {
 
   // Webhook Events
   getWebhookEvent(id: string): Promise<WebhookEvent | undefined>;
+  getAllWebhookEvents(): Promise<WebhookEvent[]>;
+  getRecentWebhookEvents(limit: number): Promise<WebhookEvent[]>;
   getUnprocessedWebhookEvents(): Promise<WebhookEvent[]>;
   createWebhookEvent(event: InsertWebhookEvent): Promise<WebhookEvent>;
   markWebhookEventProcessed(id: string): Promise<boolean>;
@@ -187,6 +189,14 @@ export class DatabaseStorage implements IStorage {
   async getWebhookEvent(id: string): Promise<WebhookEvent | undefined> {
     const [event] = await db.select().from(webhookEvents).where(eq(webhookEvents.id, id));
     return event || undefined;
+  }
+
+  async getAllWebhookEvents(): Promise<WebhookEvent[]> {
+    return await db.select().from(webhookEvents).orderBy(desc(webhookEvents.createdAt));
+  }
+
+  async getRecentWebhookEvents(limit: number): Promise<WebhookEvent[]> {
+    return await db.select().from(webhookEvents).orderBy(desc(webhookEvents.createdAt)).limit(limit);
   }
 
   async getUnprocessedWebhookEvents(): Promise<WebhookEvent[]> {
