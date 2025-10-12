@@ -1,4 +1,4 @@
-import { Home, Workflow, Instagram, Activity, Settings, Plus, Sparkles, Users } from "lucide-react";
+import { Home, Workflow, Instagram, Activity, Settings, Plus, Sparkles, Users, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 const menuItems = [
   {
@@ -50,6 +52,24 @@ const menuItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged out",
+        description: "You've been successfully logged out.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Sidebar>
@@ -83,10 +103,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2" data-testid="link-settings">
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
+      <SidebarFooter className="p-4 space-y-2">
+        {user && (
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50">
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="text-xs">
+                {user.email.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium truncate" data-testid="text-user-email">{user.email}</p>
+            </div>
+          </div>
+        )}
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="w-full justify-start gap-2" 
+          onClick={handleLogout}
+          data-testid="button-logout"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Log Out</span>
         </Button>
       </SidebarFooter>
     </Sidebar>
