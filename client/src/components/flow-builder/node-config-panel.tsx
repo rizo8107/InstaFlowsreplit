@@ -4,16 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, CheckCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { InstagramAccount } from "@shared/schema";
 
 interface NodeConfigPanelProps {
   selectedNode: any;
   onClose: () => void;
   onUpdate: (nodeId: string, data: any) => void;
+  selectedAccount?: InstagramAccount;
 }
 
-export function NodeConfigPanel({ selectedNode, onClose, onUpdate }: NodeConfigPanelProps) {
+export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccount }: NodeConfigPanelProps) {
   if (!selectedNode) return null;
 
   const handleUpdate = (updates: any) => {
@@ -82,6 +85,39 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate }: NodeConfigP
                 data-testid="input-trigger-label"
               />
             </div>
+
+            {/* Trigger Validation Status */}
+            {selectedNode.data.triggerType ? (
+              selectedAccount?.isActive ? (
+                <Alert className="border-chart-4 bg-chart-4/10" data-testid="alert-trigger-configured">
+                  <CheckCircle className="h-4 w-4 text-chart-4" />
+                  <AlertDescription className="text-sm ml-2">
+                    Trigger configured correctly. Ready to receive <strong>{selectedNode.data.triggerType.replace(/_/g, " ")}</strong> events from <strong>@{selectedAccount.username}</strong>.
+                  </AlertDescription>
+                </Alert>
+              ) : selectedAccount ? (
+                <Alert variant="destructive" data-testid="alert-account-inactive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-sm ml-2">
+                    Account is inactive. Go to Flow Settings and activate the account to start receiving events.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="destructive" data-testid="alert-no-account">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-sm ml-2">
+                    No Instagram account selected. Go to Flow Settings to select an account.
+                  </AlertDescription>
+                </Alert>
+              )
+            ) : (
+              <Alert data-testid="alert-no-trigger-type">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-sm ml-2">
+                  Select a trigger type to activate this trigger node.
+                </AlertDescription>
+              </Alert>
+            )}
           </>
         )}
 

@@ -154,6 +154,14 @@ export default function FlowBuilder() {
         node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
       )
     );
+    
+    // Update selectedNode to reflect changes in real-time
+    if (selectedNode && selectedNode.id === nodeId) {
+      setSelectedNode({
+        ...selectedNode,
+        data: { ...selectedNode.data, ...data }
+      });
+    }
   };
 
   const handleSave = () => {
@@ -332,6 +340,7 @@ export default function FlowBuilder() {
               selectedNode={selectedNode}
               onClose={() => setSelectedNode(null)}
               onUpdate={updateNodeData}
+              selectedAccount={accounts?.find(a => a.id === selectedAccountId)}
             />
           </div>
         )}

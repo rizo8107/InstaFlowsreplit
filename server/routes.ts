@@ -340,15 +340,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { object, entry } = req.body;
 
+      console.log("Webhook received:", JSON.stringify(req.body, null, 2));
+
       if (object !== "instagram") {
+        return res.sendStatus(200);
+      }
+
+      if (!entry || !Array.isArray(entry)) {
+        console.log("No entry array in webhook payload");
         return res.sendStatus(200);
       }
 
       for (const item of entry) {
         const instagramUserId = item.id;
+        console.log("Processing webhook for Instagram user ID:", instagramUserId);
+        
         const account = await storage.getAccountByUserId(instagramUserId);
 
-        if (!account || !account.isActive) {
+        if (!account) {
+          console.log("No account found for Instagram user ID:", instagramUserId);
+          
+          // Still save the webhook event for debugging (use first account or create a placeholder)
+          const accounts = await storage.getAllAccounts();
+          if (accounts.length > 0) {
+            await storage.createWebhookEvent({
+              accountId: accounts[0].id,
+              eventType: "unknown",
+              payload: { raw: item, reason: "account_not_found" },
+              processed: false,
+            });
+          }
+          continue;
+        }
+
+        if (!account.isActive) {
+          console.log("Account is inactive:", account.username);
           continue;
         }
 
@@ -376,9 +402,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               eventType = "story_reply_received";
               triggerData = { story_reply: value };
               break;
+            default:
+              console.log("Unknown webhook field:", field);
+              eventType = "unknown";
+              triggerData = { field, value };
           }
 
-          if (!eventType) continue;
+          console.log("Saving webhook event:", eventType, "for account:", account.username);
 
           // Store webhook event
           const webhookEvent = await storage.createWebhookEvent({
@@ -398,7 +428,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               )
           );
 
-          // Execute matching flows
+          // Execute matching flows and track success
+          let allExecutionsSuccessful = matchingFlows.length > 0; // Only mark processed if there were flows to execute
+          
           for (const flow of matchingFlows) {
             const execution = await storage.createExecution({
               flowId: flow.id,
@@ -420,16 +452,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 executionPath: result.executionPath,
                 errorMessage: result.error || null,
               });
+              
+              console.log("Flow execution completed:", execution.id, result.success ? "success" : "failed");
+              
+              // Track overall success - all flows must succeed
+              if (!result.success) {
+                allExecutionsSuccessful = false;
+              }
             } catch (error: any) {
+              console.error("Flow execution error:", error);
               await storage.updateExecution(execution.id, {
                 status: "failed",
                 errorMessage: error.message,
               });
+              allExecutionsSuccessful = false;
             }
           }
 
-          // Mark webhook as processed
-          await storage.markWebhookEventProcessed(webhookEvent.id);
+          // Only mark webhook as processed if all executions succeeded
+          if (allExecutionsSuccessful) {
+            await storage.markWebhookEventProcessed(webhookEvent.id);
+            console.log("Webhook event marked as processed");
+          } else {
+            console.log("Webhook event left unprocessed due to execution failures");
+          }
         }
       }
 
