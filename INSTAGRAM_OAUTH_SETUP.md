@@ -4,7 +4,7 @@
 
 ✅ **Server Configuration**: Complete
 - OAUTH_BASE_URL: `https://insta-flows-nirmal40.replit.app`
-- Instagram App ID: `1834669907328392`
+- Instagram App ID: `4224943747791118`
 - Instagram App Secret: Configured
 - OAuth Redirect URI: `https://insta-flows-nirmal40.replit.app/api/auth/instagram/callback`
 
@@ -19,7 +19,8 @@
    - Login with your Meta account
 
 2. **Select Your App**
-   - Find and click on your app (ID: 1834669907328392)
+   - Find and click on your app (ID: 4224943747791118)
+   - Direct link: https://developers.facebook.com/apps/4224943747791118/
 
 3. **Navigate to Instagram Business Login Settings**
    - In the left sidebar, click **"Instagram"**
