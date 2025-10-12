@@ -128,6 +128,17 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  app.get("/api/flows/:flowId/executions", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const allExecutions = await storage.getExecutionsByFlow(req.params.flowId);
+      const executions = allExecutions.slice(0, limit);
+      res.json(executions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Webhook Events
   app.get("/api/webhook-events", async (req, res) => {
     try {

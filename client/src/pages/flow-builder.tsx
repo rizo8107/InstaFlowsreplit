@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Play, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, Save, Play, Settings as SettingsIcon, ChevronUp, ChevronDown, Activity } from "lucide-react";
 import { nodeTypes } from "@/components/flow-builder/custom-nodes";
 import { NodePalette } from "@/components/flow-builder/node-palette";
 import { NodeConfigPanel } from "@/components/flow-builder/node-config-panel";
@@ -57,6 +57,8 @@ export default function FlowBuilder() {
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [isActive, setIsActive] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [executionsPanelOpen, setExecutionsPanelOpen] = useState(false);
+  const [selectedExecution, setSelectedExecution] = useState<any | null>(null);
 
   const { data: flow, isLoading: flowLoading } = useQuery<Flow>({
     queryKey: [`/api/flows/${id}`],
@@ -65,6 +67,12 @@ export default function FlowBuilder() {
 
   const { data: accounts } = useQuery<InstagramAccount[]>({
     queryKey: ["/api/accounts"],
+  });
+
+  const { data: executions, refetch: refetchExecutions } = useQuery<any[]>({
+    queryKey: [`/api/flows/${id}/executions`],
+    enabled: !isNewFlow && executionsPanelOpen,
+    refetchInterval: executionsPanelOpen ? 5000 : false, // Auto-refresh every 5s when open
   });
 
   useEffect(() => {
@@ -300,48 +308,185 @@ export default function FlowBuilder() {
       </div>
 
       {/* Flow Builder */}
-      <div className="flex-1 flex">
-        {/* Left Palette */}
-        <div className="p-4 border-r">
-          <NodePalette onAddNode={addNode} />
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex">
+          {/* Left Palette */}
+          <div className="p-4 border-r">
+            <NodePalette onAddNode={addNode} />
+          </div>
+
+          {/* Canvas */}
+          <div className="flex-1 bg-[#FAFAFA] dark:bg-background relative">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              onPaneClick={onPaneClick}
+              nodeTypes={nodeTypes}
+              fitView
+            >
+              <Background color="#DBDBDB" gap={16} />
+              <Controls />
+              <MiniMap
+                nodeColor={(node) => {
+                  if (node.type === "trigger") return "#2196F3";
+                  if (node.type === "condition") return "#833AB4";
+                  if (node.type === "action") return "#E4405F";
+                  return "#666";
+                }}
+                maskColor="rgba(0, 0, 0, 0.1)"
+              />
+            </ReactFlow>
+
+            {/* Execution Panel Toggle Button */}
+            {!isNewFlow && (
+              <div className="absolute bottom-4 left-4 z-10">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    setExecutionsPanelOpen(!executionsPanelOpen);
+                    if (!executionsPanelOpen) {
+                      refetchExecutions();
+                    }
+                  }}
+                  className="gap-2"
+                  data-testid="button-toggle-executions"
+                >
+                  <Activity className="w-4 h-4" />
+                  Executions
+                  {executionsPanelOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Right Config Panel */}
+          {selectedNode && (
+            <div className="w-80 border-l">
+              <NodeConfigPanel
+                selectedNode={selectedNode}
+                onClose={() => setSelectedNode(null)}
+                onUpdate={updateNodeData}
+                selectedAccount={accounts?.find(a => a.id === selectedAccountId)}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Canvas */}
-        <div className="flex-1 bg-[#FAFAFA] dark:bg-background">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
-            nodeTypes={nodeTypes}
-            fitView
-          >
-            <Background color="#DBDBDB" gap={16} />
-            <Controls />
-            <MiniMap
-              nodeColor={(node) => {
-                if (node.type === "trigger") return "#2196F3";
-                if (node.type === "condition") return "#833AB4";
-                if (node.type === "action") return "#E4405F";
-                return "#666";
-              }}
-              maskColor="rgba(0, 0, 0, 0.1)"
-            />
-          </ReactFlow>
-        </div>
+        {/* Execution History Panel */}
+        {executionsPanelOpen && !isNewFlow && (
+          <div className="border-t bg-card">
+            <div className="flex h-64">
+              {/* Execution List */}
+              <div className="w-80 border-r p-4 overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-sm">Recent Executions</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => refetchExecutions()}
+                    data-testid="button-refresh-executions"
+                  >
+                    Refresh
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {executions && executions.length > 0 ? (
+                    executions.map((exec: any) => (
+                      <Card
+                        key={exec.id}
+                        className={`cursor-pointer hover-elevate ${
+                          selectedExecution?.id === exec.id ? "ring-2 ring-primary" : ""
+                        }`}
+                        onClick={() => setSelectedExecution(exec)}
+                        data-testid={`execution-${exec.id}`}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge variant={exec.status === "success" ? "default" : "destructive"}>
+                              {exec.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(exec.executedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium truncate">{exec.flowName}</p>
+                          <p className="text-xs text-muted-foreground">{exec.triggerType}</p>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      No executions yet. Trigger this flow to see executions here.
+                    </p>
+                  )}
+                </div>
+              </div>
 
-        {/* Right Config Panel */}
-        {selectedNode && (
-          <div className="w-80 border-l">
-            <NodeConfigPanel
-              selectedNode={selectedNode}
-              onClose={() => setSelectedNode(null)}
-              onUpdate={updateNodeData}
-              selectedAccount={accounts?.find(a => a.id === selectedAccountId)}
-            />
+              {/* Execution Details */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                {selectedExecution ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold mb-2">Execution Details</h3>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Status:</span>{" "}
+                          <Badge variant={selectedExecution.status === "success" ? "default" : "destructive"}>
+                            {selectedExecution.status}
+                          </Badge>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Trigger:</span>{" "}
+                          {selectedExecution.triggerType}
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Executed:</span>{" "}
+                          {new Date(selectedExecution.executedAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Trigger Data</h4>
+                      <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto">
+                        {JSON.stringify(selectedExecution.triggerData, null, 2)}
+                      </pre>
+                    </div>
+
+                    {selectedExecution.executionPath && selectedExecution.executionPath.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Execution Path</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedExecution.executionPath.map((nodeId: string, idx: number) => (
+                            <Badge key={idx} variant="outline">
+                              {nodeId}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedExecution.errorMessage && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 text-destructive">Error</h4>
+                        <pre className="bg-destructive/10 text-destructive p-3 rounded-md text-xs overflow-x-auto">
+                          {selectedExecution.errorMessage}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Select an execution to view details
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
