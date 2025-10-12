@@ -1,7 +1,7 @@
 import { Express } from "express";
 
 export interface WebhookSubscriptionService {
-  // no-op for IG: returns true if app-level subscription exists & account is eligible
+  // Automatically subscribe Facebook Page to webhooks for Instagram events
   subscribeToWebhooks(
     instagramUserId: string,
     accessToken: string,
@@ -36,17 +36,25 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
   }
 
   /**
-   * IG webhooks are app-level. This method now:
-   * 1) Confirms the app is subscribed to the "instagram" object (app-level).
-   * 2) Confirms the IG account is eligible (professional + linked to a Page).
-   * 3) Confirms the user enabled "Allow access to messages" (best-effort check).
+   * Phase 2 Automation: Automatically subscribe Facebook Page to webhooks
+   * 
+   * Instagram webhooks require TWO steps:
+   * 1) App-level subscription (Phase 1 - manual, one-time in Meta Dashboard)
+   * 2) Page-level subscription (Phase 2 - automatic, per-account)
+   * 
+   * This method:
+   * 1) Verifies app-level Instagram webhook subscription exists
+   * 2) Gets the Facebook Page ID and Page Access Token
+   * 3) Subscribes the Page to webhook fields (messages, feed, mentions)
    */
   async subscribeToWebhooks(
     instagramUserId: string,
     accessToken: string,
   ): Promise<boolean> {
     try {
-      // 1) Verify APP-LEVEL subscription exists
+      console.log("\n🔄 Starting automatic webhook subscription...");
+      
+      // 1) Verify APP-LEVEL subscription exists (Phase 1 must be done first)
       const appAccessToken = `${this.appId}|${this.appSecret}`;
       const appSubResp = await fetch(
         `https://graph.facebook.com/v24.0/${this.appId}/subscriptions?access_token=${appAccessToken}`,
@@ -57,62 +65,72 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
         (s: any) => s.object === "instagram",
       );
       if (!igSub || !igSub.callback_url) {
-        console.error(
-          "App is NOT subscribed to the Instagram object at the app level.",
-        );
+        console.error("❌ App is NOT subscribed to Instagram webhooks at app level.");
         const verifyToken = await this.getVerifyToken();
-        console.log("\n=== REQUIRED ONE-TIME SETUP ===");
-        console.log(
-          `1) App Dashboard → Products → Webhooks → Add "Instagram" object`,
-        );
+        console.log("\n=== PHASE 1: REQUIRED ONE-TIME SETUP (Do this in Meta Dashboard) ===");
+        console.log(`1) App Dashboard → Products → Webhooks → Add "Instagram" object`);
         console.log(`2) Callback URL: ${this.callbackUrl}`);
         console.log(`3) Verify Token: ${verifyToken}`);
-        console.log(
-          `4) Subscribe to needed fields (messages, comments, mentions, story_insights, etc.)`,
-        );
+        console.log(`4) Subscribe to fields: messages, comments, mentions`);
+        console.log("======================================================================\n");
         return false;
       }
 
-      // 2) Check the IG account is professional & linked to a Page
-      // Get basic IG account info
-      const igInfoResp = await fetch(
-        `https://graph.facebook.com/v24.0/${instagramUserId}?fields=id,username,ig_id,account_type&access_token=${accessToken}`,
-      );
-      const igInfo = await igInfoResp.json();
+      console.log("✅ Phase 1 complete: App-level subscription exists");
+      console.log(`   Subscribed fields: ${igSub.fields?.join(', ') || 'unknown'}`);
 
-      const isProfessional =
-        igInfo?.account_type === "BUSINESS" ||
-        igInfo?.account_type === "CREATOR";
-
-      // Try to discover linked Page (via user/pages then link to ig user)
-      // Access token must have pages_show_list/pages_read_engagement
+      // 2) Get Facebook Page ID and Page Access Token
+      console.log("\n📄 Fetching Facebook Page details...");
       const pagesResp = await fetch(
-        `https://graph.facebook.com/v24.0/me/accounts?fields=id,name,instagram_business_account&access_token=${accessToken}`,
+        `https://graph.facebook.com/v24.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`,
       );
       const pagesData = await pagesResp.json();
+
+      if (pagesData.error) {
+        console.error("❌ Failed to fetch Facebook Pages:", pagesData.error.message);
+        console.log("   Make sure the user granted 'pages_show_list' permission during OAuth");
+        return false;
+      }
+
+      // Find the Page that manages this Instagram account
       const pageWithThisIG = pagesData?.data?.find(
         (p: any) => p.instagram_business_account?.id === instagramUserId,
       );
 
-      const hasLinkedPage = !!pageWithThisIG;
-
-      // 3) We cannot read the “Allow access to messages” toggle via API;
-      // just surface an actionable hint for the user.
-      const messagingAccessNote =
-        "Ask user to enable Instagram app → Settings → Privacy → Messages → Connected tools → Allow access to messages.";
-
-      const ok = !!igSub && isProfessional && hasLinkedPage;
-      if (!ok) {
-        console.error("Eligibility check failed", {
-          appSubscriptionFound: !!igSub,
-          isProfessional,
-          hasLinkedPage,
-        });
+      if (!pageWithThisIG) {
+        console.error("❌ No Facebook Page found linked to Instagram account:", instagramUserId);
+        console.log("   Available Pages:", pagesData?.data?.map((p: any) => ({
+          name: p.name,
+          id: p.id,
+          ig_account: p.instagram_business_account?.id
+        })));
+        return false;
       }
 
-      return ok;
+      console.log(`✅ Found linked Facebook Page: "${pageWithThisIG.name}" (${pageWithThisIG.id})`);
+
+      // 3) Subscribe the Page to webhook fields
+      console.log("\n🔔 Subscribing Page to webhook fields...");
+      const subscribeResp = await fetch(
+        `https://graph.facebook.com/v24.0/${pageWithThisIG.id}/subscribed_apps?` +
+        `subscribed_fields=messages,feed,mentions&` +
+        `access_token=${pageWithThisIG.access_token}`,
+        { method: 'POST' }
+      );
+
+      const subscribeData = await subscribeResp.json();
+
+      if (!subscribeResp.ok || !subscribeData.success) {
+        console.error("❌ Page subscription failed:", subscribeData);
+        return false;
+      }
+
+      console.log("✅ Page successfully subscribed to webhook fields!");
+      console.log("   The app will now receive events for this Instagram account\n");
+
+      return true;
     } catch (err) {
-      console.error("subscribeToWebhooks (no-op) failed:", err);
+      console.error("❌ Webhook subscription error:", err);
       return false;
     }
   }
@@ -147,52 +165,51 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
         `https://graph.facebook.com/v24.0/me/accounts?fields=id,name,instagram_business_account&access_token=${accessToken}`,
       );
       const pagesData = await pagesResp.json();
-      const pageWithThisIG = pagesData?.data?.find(
+      const linkedPage = pagesData?.data?.find(
         (p: any) => p.instagram_business_account?.id === instagramUserId,
       );
 
       return {
-        appLevel: {
-          configured: !!instagramSub,
-          subscription: instagramSub || null,
+        appLevelSubscription: {
+          exists: !!instagramSub,
+          callbackUrl: instagramSub?.callback_url,
+          fields: instagramSub?.fields || [],
         },
         account: {
-          id: instagramUserId,
+          id: igInfo?.id,
           username: igInfo?.username,
-          account_type: igInfo?.account_type,
-          linked_page_id: pageWithThisIG?.id || null,
+          accountType: igInfo?.account_type,
+          isProfessional:
+            igInfo?.account_type === "BUSINESS" ||
+            igInfo?.account_type === "CREATOR",
+          linkedPage: linkedPage
+            ? { id: linkedPage.id, name: linkedPage.name }
+            : null,
         },
-        callbackUrl: this.callbackUrl,
-        notes: [
-          "Instagram webhooks are configured at the APP level (Meta Webhooks → Instagram object).",
-          "Ensure the IG account is Business/Creator and linked to a Facebook Page.",
-          "User must enable: Instagram app → Settings → Privacy → Messages → Connected tools → Allow access to messages.",
-        ],
       };
-    } catch (error) {
-      console.error("Error checking webhook subscription:", error);
-      return {
-        configured: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+    } catch (err) {
+      console.error("checkWebhookSubscription error:", err);
+      return { error: String(err) };
     }
   }
 
   async getSetupInstructions(): Promise<string> {
     const verifyToken = await this.getVerifyToken();
     return `
-=== INSTAGRAM WEBHOOK SETUP (One-time APP-level) ===
+Instagram Webhook Setup Instructions:
+=====================================
+1. Go to Meta App Dashboard → Products → Webhooks
+2. Select "Instagram" as the object type
+3. Configure:
+   - Callback URL: ${this.callbackUrl}
+   - Verify Token: ${verifyToken}
+4. Subscribe to fields: messages, comments, mentions
+5. Each connected Instagram account needs its linked Facebook Page subscribed (automatic)
 
-1) Meta App Dashboard → Products → Webhooks → Add "Instagram" object
-2) Callback URL: ${this.callbackUrl}
-3) Verify Token: ${verifyToken}
-4) Subscribe to fields you need (e.g., messages, comments, mentions, story_insights, message_reactions, etc.)
-5) Put the app in Live mode and make sure permissions are approved:
-   instagram_manage_messages, instagram_basic, pages_manage_metadata, pages_read_engagement, pages_show_list, business_management
-
-Per-account "subscribe" via API is NOT required/available for Instagram webhooks.
-Route tenants based on IDs in the payload.
-`;
+Note: Instagram webhooks work through Facebook Pages.
+When a user connects their Instagram account, the system will automatically
+subscribe their Facebook Page to receive webhook events.
+    `.trim();
   }
 }
 

@@ -129,12 +129,32 @@ Check console logs for:
 
 ## 🎯 Next Steps (Priority Order)
 
+### Phase 1: Manual Webhook Setup (One-Time)
+1. **Go to Meta App Dashboard** → Webhooks
+2. **Subscribe to Instagram object**:
+   - Callback URL: `https://insta-flows-nirmal40.replit.app/api/webhooks/instagram`
+   - Verify Token: `zenthra`
+   - Fields: messages, feed, mentions
+
+### Phase 2: Automatic Page Subscription (Per Account)
 1. **Connect Instagram account via OAuth** in production
-2. **Watch console logs** during connection to see auto-subscription
-3. **If auto-subscription fails**: Note the exact error message
-4. **If needed**: Manually configure webhooks in Meta Dashboard
-5. **Test**: Send a DM to your Instagram account
-6. **Verify**: Check Activity page for flow execution
+2. **Watch console logs** - you'll see:
+   ```
+   🔄 Starting automatic webhook subscription...
+   ✅ Phase 1 complete: App-level subscription exists
+   📄 Fetching Facebook Page details...
+   ✅ Found linked Facebook Page: "Your Page" (123...)
+   🔔 Subscribing Page to webhook fields...
+   ✅ Page successfully subscribed!
+   ```
+3. **If auto-subscription fails**: Check logs for error details
+4. **Test**: Send a DM to your Instagram account
+5. **Verify**: Check Activity page for flow execution
+
+### ⚠️ Known Issue: Facebook Pages Permission
+If you see: `❌ Failed to fetch Facebook Pages: pages_show_list permission required`
+
+This means the Instagram token cannot access Facebook Pages. **Solution**: We may need to switch to Facebook Login with Instagram permissions (requires code changes)
 
 ---
 
