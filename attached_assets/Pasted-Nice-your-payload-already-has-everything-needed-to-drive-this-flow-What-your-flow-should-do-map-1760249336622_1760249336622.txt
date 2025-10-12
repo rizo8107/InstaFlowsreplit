@@ -1,0 +1,109 @@
+Nice—your payload already has everything needed to drive this flow.
+
+✅ What your flow should do (mapped to payload → API)
+
+Incoming payload (your webhook):
+
+{
+  "from_id": "2311832439245966",
+  "media_id": "18075362146861554",
+  "comment_id": "17859180870525666",
+  "media_type": "REELS",
+  "comment_text": "123",
+  "from_username": "rizo.xz"
+}
+
+1) Trigger: “Comment Received”
+
+Use the payload as-is (no API call needed).
+
+2) Condition (make it Reel-specific + keyword):
+if (payload.media_type === "REELS" && payload.comment_text === "123") {
+  // proceed
+} else {
+  // exit flow
+}
+
+
+If you ever need to confirm type from Instagram (e.g., payload doesn’t include media_type), fetch:
+
+curl -G "https://graph.instagram.com/v24.0/<MEDIA_ID>" \
+  -d "fields=id,media_type,media_product_type" \
+  -d "access_token=<IG_USER_TOKEN>"
+
+
+Treat as Reel if media_product_type == REELS (or media_type == VIDEO + media_product_type == REELS).
+
+3) Action A: Reply publicly to the comment
+curl -X POST "https://graph.instagram.com/v24.0/<COMMENT_ID>/replies" \
+  -d "message=DM check 👋" \
+  -d "access_token=<IG_USER_TOKEN>"
+
+
+This is the official IG Graph comment replies endpoint. 
+Facebook Developers
++2
+Facebook Developers
++2
+
+4) Action B: Send a DM to the commenter
+
+There are two supported paths:
+
+(B1) Private Reply from a comment (recommended here)
+
+When the trigger is a comment, the only official way to DM that user immediately is a Private Reply using the Messenger Platform for Instagram. It uses the comment_id as the recipient.
+
+PAGE_ID="<FB_PAGE_ID_LINKED_TO_IG>"
+PAGE_TOKEN="<PAGE_ACCESS_TOKEN>"
+
+curl -X POST "https://graph.facebook.com/v24.0/${PAGE_ID}/messages?access_token=${PAGE_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "recipient": { "comment_id": "'${COMMENT_ID}'" },
+        "message":   { "text": "Thanks for commenting! Here’s the link: https://example.com/xyz" }
+      }'
+
+
+Rules: exactly one private reply per comment, must be sent within 7 days of the comment; if the user replies, you get a 24-hour window to continue the conversation. 
+Facebook Developers
++1
+
+Why facebook.com here? Because Instagram Private Replies are only exposed via the Messenger Platform endpoint. You can’t initiate a DM from a comment via graph.instagram.com. (The graph.instagram.com Conversations API works once a conversation already exists.) 
+Facebook Developers
++1
+
+(B2) Reply inside an existing conversation (if one already exists)
+
+If the user previously messaged you and you have a conversation ID, you can send via Instagram Login Conversations API:
+
+curl -X POST "https://graph.instagram.com/v24.0/<CONVERSATION_ID>/messages" \
+  -H "Content-Type: application/json" \
+  -d '{ "message": { "text": "Thanks for your comment on our Reel! 🙌" } }' \
+  -d "access_token=<IG_USER_TOKEN>"
+
+
+List conversations:
+
+curl -G "https://graph.instagram.com/v24.0/me/conversations" \
+  -d "platform=instagram" \
+  -d "access_token=<IG_USER_TOKEN>"
+
+
+Facebook Developers
+
+Drop-in wiring for your canvas (based on the screenshot)
+
+Trigger node: accepts the payload above.
+
+Condition node:
+
+Left branch if media_type !== 'REELS' or comment_text !== '123' → stop.
+
+Right branch (passes) → run actions.
+
+Action: Reply Comment → call POST /{comment_id}/replies on graph.instagram.com (snippet above).
+
+Action: Send DM → if you want to DM because of the comment, call Private Replies on graph.facebook.com/{PAGE_ID}/messages with recipient.comment_id. If a chat already exists, you may instead call POST /{conversation_id}/messages on graph.instagram.com.
+
+That’s it. If you want, I can append these into your existing .md guide as a “Comment flow” section with ready-to-paste n8n node notes.
