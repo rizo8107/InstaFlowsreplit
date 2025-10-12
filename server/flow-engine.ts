@@ -44,6 +44,7 @@ export class FlowEngine {
       variables.message_text = triggerData.comment_text; // Alias for conditions
       variables.username = triggerData.from_username;
       variables.user_id = triggerData.from_id;
+      variables.sender_id = triggerData.from_id; // For sending DMs from comment events
       variables.media_id = triggerData.media_id;
     }
     

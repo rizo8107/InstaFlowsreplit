@@ -22,6 +22,11 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Comment Flow Actions Fixed (October 12, 2025)**: Fixed variable extraction for comment events to enable DM actions
+  - **sender_id Mapping**: Added sender_id mapping from from_id for comment events to enable send_dm actions
+  - **Variable Extraction**: Comment events now properly set sender_id variable for DM/Private Reply functionality
+  - **Comment Moderation API**: Reply to comment uses correct endpoint `/<IG_COMMENT_ID>/replies` with `message` parameter
+
 - **UI Improvements & Button Templates (October 12, 2025)**: Enhanced condition configuration and added Instagram DM button template support
   - **Condition Field Dropdown**: Converted condition field input to dropdown with predefined options (message_text, comment_text, username, user_id, sender_id, comment_id, message_id, media_id)
   - **Improved Operator Labels**: Updated "not_contains" to "Does Not Contain" and "not_equals" to "Does Not Equal" for clarity
