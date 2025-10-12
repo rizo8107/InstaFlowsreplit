@@ -19,7 +19,7 @@ I am the user, and my preferences are as follows:
 The platform features an intuitive interface with a visual drag-and-drop flow builder using ReactFlow. The design system incorporates Instagram branding with a gradient color scheme (#E4405F to #833AB4), clean grays, and status-indicating colors. Typography utilizes a Helvetica Neue font stack for an Instagram-like feel. Components are built with Shadcn UI and custom Instagram theming, featuring a sidebar navigation and a responsive canvas workspace. Interactions include hover elevations, smooth transitions, and drag-and-drop functionality.
 
 ### Technical Implementations
-The application is a full-stack TypeScript project, utilizing an Express.js backend and a React frontend. React with Wouter handles routing, while TanStack Query manages data fetching. Tailwind CSS is used for styling. User authentication is managed by Passport.js with session management via `express-session`, supporting Instagram OAuth for account connection. Password hashing is done with scrypt.
+The application is a full-stack TypeScript project, utilizing an Express.js backend and a React frontend. React with Wouter handles routing, while TanStack Query manages data fetching. Tailwind CSS is used for styling. User authentication is managed by Passport.js with session management via `express-session`, supporting Instagram Business Login OAuth for account connection. Password hashing is done with scrypt.
 
 ### Feature Specifications
 - **Visual Flow Builder**: Allows users to create automation workflows using custom node types (Trigger, Condition, Action) with a drag-and-drop interface.
@@ -42,7 +42,7 @@ The application is a full-stack TypeScript project, utilizing an Express.js back
 
 ## External Dependencies
 - **Instagram Graph API**: Core integration for managing Instagram accounts, sending messages, and performing actions.
-- **Facebook OAuth**: Used for one-click Instagram account connection and user authentication.
+- **Instagram Business Login OAuth**: Direct OAuth flow using instagram.com/oauth/authorize for secure Instagram account connection with long-lived access tokens (60-day validity).
 - **PostgreSQL**: Relational database for persistent storage.
 - **ReactFlow**: Library for the visual drag-and-drop flow builder.
 - **TanStack Query**: Data fetching and caching library.

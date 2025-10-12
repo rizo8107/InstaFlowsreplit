@@ -136,27 +136,6 @@ export function setupAuth(app: Express) {
     res.json(safeUser);
   });
 
-  // Facebook OAuth routes for Instagram connection
-  app.get(
-    "/api/auth/instagram",
-    (req, res, next) => {
-      if (!req.isAuthenticated()) {
-        return res.status(401).send("Must be logged in to connect Instagram");
-      }
-      next();
-    },
-    passport.authenticate("facebook", {
-      scope: [
-        "instagram_basic",
-        "pages_show_list",
-        "instagram_graph_user_profile",
-        "instagram_graph_user_media",
-        "instagram_manage_messages",
-        "instagram_manage_comments",
-      ],
-    })
-  );
-
   // Step 2: Handle Instagram callback and exchange code for tokens
   app.get("/api/auth/instagram/callback", async (req, res) => {
     try {
