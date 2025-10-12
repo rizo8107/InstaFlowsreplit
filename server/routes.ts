@@ -1,17 +1,12 @@
+import express from "express";
 import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { 
-  insertInstagramAccountSchema, 
-  insertFlowSchema, 
-  updateFlowSchema,
-  insertFlowExecutionSchema,
-  insertFlowTemplateSchema
-} from "@shared/schema";
+import { createServer } from "http";
+import type { IStorage } from "./storage";
+import type { InsertInstagramAccount, InsertFlow, UpdateFlow, InsertFlowExecution } from "@shared/schema";
 import { InstagramAPI } from "./instagram-api";
 import { FlowEngine } from "./flow-engine";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export function registerRoutes(app: Express, storage: IStorage) {
   // Instagram Accounts
   app.get("/api/accounts", async (req, res) => {
     try {
@@ -22,25 +17,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/accounts/:id", async (req, res) => {
+  app.post("/api/accounts", async (req, res) => {
     try {
-      const account = await storage.getAccount(req.params.id);
-      if (!account) {
-        return res.status(404).json({ error: "Account not found" });
-      }
+      const accountData: InsertInstagramAccount = req.body;
+      const account = await storage.createAccount(accountData);
       res.json(account);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/accounts", async (req, res) => {
-    try {
-      const data = insertInstagramAccountSchema.parse(req.body);
-      const account = await storage.createAccount(data);
-      res.json(account);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
     }
   });
 
@@ -92,24 +75,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/flows", async (req, res) => {
     try {
-      const data = insertFlowSchema.parse(req.body);
-      const flow = await storage.createFlow(data);
+      const flowData: InsertFlow = req.body;
+      const flow = await storage.createFlow(flowData);
       res.json(flow);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   });
 
   app.patch("/api/flows/:id", async (req, res) => {
     try {
-      const data = updateFlowSchema.parse(req.body);
-      const flow = await storage.updateFlow(req.params.id, data);
+      const updates: UpdateFlow = req.body;
+      const flow = await storage.updateFlow(req.params.id, updates);
       if (!flow) {
         return res.status(404).json({ error: "Flow not found" });
       }
       res.json(flow);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -125,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Flow Executions
+  // Executions
   app.get("/api/executions", async (req, res) => {
     try {
       const executions = await storage.getAllExecutions();
@@ -137,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/executions/recent", async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = parseInt(req.query.limit as string) || 20;
       const executions = await storage.getRecentExecutions(limit);
       res.json(executions);
     } catch (error: any) {
@@ -165,71 +148,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/executions/:id", async (req, res) => {
-    try {
-      const execution = await storage.getExecution(req.params.id);
-      if (!execution) {
-        return res.status(404).json({ error: "Execution not found" });
-      }
-      res.json(execution);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Execute a flow manually (for testing)
-  app.post("/api/flows/:id/execute", async (req, res) => {
-    try {
-      const flow = await storage.getFlow(req.params.id);
-      if (!flow) {
-        return res.status(404).json({ error: "Flow not found" });
-      }
-
-      const account = await storage.getAccount(flow.accountId);
-      if (!account) {
-        return res.status(404).json({ error: "Account not found" });
-      }
-
-      // Create execution record
-      const execution = await storage.createExecution({
-        flowId: flow.id,
-        accountId: account.id,
-        triggerType: "manual",
-        triggerData: req.body.triggerData || {},
-        status: "running",
-        executionPath: [],
-        errorMessage: null,
-      });
-
-      // Execute flow
-      const api = new InstagramAPI(account.accessToken);
-      const engine = new FlowEngine(api, flow, req.body.triggerData || {});
-      const result = await engine.execute();
-
-      // Update execution record
-      await storage.updateExecution(execution.id, {
-        status: result.success ? "success" : "failed",
-        executionPath: result.executionPath,
-        errorMessage: result.error || null,
-      });
-
-      res.json({
-        executionId: execution.id,
-        success: result.success,
-        executionPath: result.executionPath,
-        error: result.error,
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // Flow Templates
   app.get("/api/templates", async (req, res) => {
     try {
-      const { category } = req.query;
-      const templates = category 
-        ? await storage.getTemplatesByCategory(category as string)
+      const category = req.query.category as string | undefined;
+      const templates = category
+        ? await storage.getTemplatesByCategory(category)
         : await storage.getAllTemplates();
       res.json(templates);
     } catch (error: any) {
@@ -237,58 +161,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/templates/:id", async (req, res) => {
+  app.post("/api/templates/:id/use", async (req, res) => {
     try {
       const template = await storage.getTemplate(req.params.id);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
+
+      await storage.incrementTemplateUseCount(req.params.id);
       res.json(template);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/templates", async (req, res) => {
-    try {
-      const data = insertFlowTemplateSchema.parse(req.body);
-      const template = await storage.createTemplate(data);
-      res.json(template);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/templates/:id/use", async (req, res) => {
-    try {
-      console.log("Template use request:", { templateId: req.params.id, body: req.body });
-      const { accountId, name } = req.body;
-      const template = await storage.getTemplate(req.params.id);
-      
-      if (!template) {
-        console.error("Template not found:", req.params.id);
-        return res.status(404).json({ error: "Template not found" });
-      }
-
-      console.log("Creating flow from template:", template.name);
-      // Create a new flow from the template
-      const flow = await storage.createFlow({
-        accountId,
-        name: name || template.name,
-        description: `Based on template: ${template.name}`,
-        isActive: false,
-        nodes: template.nodes,
-        edges: template.edges,
-      });
-
-      console.log("Flow created:", flow.id);
-      // Increment template use count
-      await storage.incrementTemplateUseCount(req.params.id);
-
-      res.json(flow);
-    } catch (error: any) {
-      console.error("Template use error:", error);
-      res.status(400).json({ error: error.message });
     }
   });
 
@@ -304,12 +187,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/webhook-token/generate", async (req, res) => {
     try {
-      // Generate a secure random token
       const crypto = await import('crypto');
       const token = crypto.randomBytes(32).toString('hex');
       
-      // Note: In production, you'd update this via a secure secrets management API
-      // For now, we return the token for the user to manually set in Replit Secrets
       res.json({ 
         token,
         message: "Copy this token and add it to your Replit Secrets as INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
@@ -321,7 +201,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Webhook handler
   app.get("/api/webhooks/instagram", async (req, res) => {
-    // Webhook verification
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
@@ -355,22 +234,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const instagramUserId = item.id;
         console.log("Processing webhook for Instagram user ID:", instagramUserId);
         
-        const account = await storage.getAccountByUserId(instagramUserId);
+        let account = await storage.getAccountByUserId(instagramUserId);
 
         if (!account) {
           console.log("No account found for Instagram user ID:", instagramUserId);
           
-          // Still save the webhook event for debugging (use first account or create a placeholder)
           const accounts = await storage.getAllAccounts();
-          if (accounts.length > 0) {
-            await storage.createWebhookEvent({
-              accountId: accounts[0].id,
-              eventType: "unknown",
-              payload: { raw: item, reason: "account_not_found" },
-              processed: false,
-            });
+          const firstActiveAccount = accounts.find(a => a.isActive);
+          
+          if (firstActiveAccount) {
+            console.log("Auto-updating Instagram User ID for account:", firstActiveAccount.username);
+            await storage.updateAccount(firstActiveAccount.id, { instagramUserId: instagramUserId });
+            account = await storage.getAccount(firstActiveAccount.id);
           }
-          continue;
+          
+          if (!account) {
+            if (accounts.length > 0) {
+              await storage.createWebhookEvent({
+                accountId: accounts[0].id,
+                eventType: "unknown",
+                payload: { raw: item, reason: "account_not_found", instagram_user_id: instagramUserId },
+                processed: false,
+              });
+            }
+            continue;
+          }
         }
 
         if (!account.isActive) {
@@ -378,103 +266,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        // Process changes
-        for (const change of item.changes) {
-          const { field, value } = change;
+        // Handle messaging webhooks (DMs)
+        if (item.messaging && Array.isArray(item.messaging)) {
+          for (const msg of item.messaging) {
+            const triggerData = {
+              message_id: msg.message?.mid,
+              message_text: msg.message?.text,
+              sender_id: msg.sender?.id,
+              timestamp: msg.timestamp,
+            };
 
-          let eventType = "";
-          let triggerData: any = {};
+            console.log("Saving DM webhook event for account:", account.username);
 
-          switch (field) {
-            case "comments":
-              eventType = "comment_received";
-              triggerData = { comment: value };
-              break;
-            case "messages":
-              eventType = "dm_received";
-              triggerData = { message: value };
-              break;
-            case "mentions":
-              eventType = "mention_received";
-              triggerData = { mention: value };
-              break;
-            case "story_insights":
-              eventType = "story_reply_received";
-              triggerData = { story_reply: value };
-              break;
-            default:
-              console.log("Unknown webhook field:", field);
-              eventType = "unknown";
-              triggerData = { field, value };
-          }
-
-          console.log("Saving webhook event:", eventType, "for account:", account.username);
-
-          // Store webhook event
-          const webhookEvent = await storage.createWebhookEvent({
-            accountId: account.id,
-            eventType,
-            payload: triggerData,
-            processed: false,
-          });
-
-          // Find matching active flows
-          const flows = await storage.getActiveFlows();
-          const matchingFlows = flows.filter(
-            (f) =>
-              f.accountId === account.id &&
-              f.nodes.some(
-                (n: any) => n.type === "trigger" && n.data.triggerType === eventType
-              )
-          );
-
-          // Execute matching flows and track success
-          let allExecutionsSuccessful = matchingFlows.length > 0; // Only mark processed if there were flows to execute
-          
-          for (const flow of matchingFlows) {
-            const execution = await storage.createExecution({
-              flowId: flow.id,
+            const webhookEvent = await storage.createWebhookEvent({
               accountId: account.id,
-              triggerType: eventType,
-              triggerData,
-              status: "running",
-              executionPath: [],
-              errorMessage: null,
+              eventType: "dm_received",
+              payload: triggerData,
+              processed: false,
             });
 
-            try {
-              const api = new InstagramAPI(account.accessToken);
-              const engine = new FlowEngine(api, flow, triggerData);
-              const result = await engine.execute();
+            const flows = await storage.getActiveFlows();
+            const matchingFlows = flows.filter(
+              (f) =>
+                f.accountId === account.id &&
+                f.nodes.some(
+                  (n: any) => n.type === "trigger" && n.data.triggerType === "dm_received"
+                )
+            );
 
-              await storage.updateExecution(execution.id, {
-                status: result.success ? "success" : "failed",
-                executionPath: result.executionPath,
-                errorMessage: result.error || null,
+            let allExecutionsSuccessful = matchingFlows.length > 0;
+            
+            for (const flow of matchingFlows) {
+              const execution = await storage.createExecution({
+                flowId: flow.id,
+                accountId: account.id,
+                triggerType: "dm_received",
+                triggerData,
+                status: "running",
+                executionPath: [],
+                errorMessage: null,
               });
-              
-              console.log("Flow execution completed:", execution.id, result.success ? "success" : "failed");
-              
-              // Track overall success - all flows must succeed
-              if (!result.success) {
+
+              try {
+                const api = new InstagramAPI(account.accessToken);
+                const engine = new FlowEngine(api, flow, triggerData);
+                const result = await engine.execute();
+
+                await storage.updateExecution(execution.id, {
+                  status: result.success ? "success" : "failed",
+                  executionPath: result.executionPath,
+                  errorMessage: result.error || null,
+                });
+                
+                console.log("Flow execution completed:", execution.id, result.success ? "success" : "failed");
+                
+                if (!result.success) {
+                  allExecutionsSuccessful = false;
+                }
+              } catch (error: any) {
+                console.error("Flow execution error:", error);
+                await storage.updateExecution(execution.id, {
+                  status: "failed",
+                  errorMessage: error.message,
+                });
                 allExecutionsSuccessful = false;
               }
-            } catch (error: any) {
-              console.error("Flow execution error:", error);
-              await storage.updateExecution(execution.id, {
-                status: "failed",
-                errorMessage: error.message,
-              });
-              allExecutionsSuccessful = false;
+            }
+
+            if (allExecutionsSuccessful) {
+              await storage.markWebhookEventProcessed(webhookEvent.id);
+              console.log("Webhook event marked as processed");
+            } else {
+              console.log("Webhook event left unprocessed due to execution failures");
             }
           }
+        }
 
-          // Only mark webhook as processed if all executions succeeded
-          if (allExecutionsSuccessful) {
-            await storage.markWebhookEventProcessed(webhookEvent.id);
-            console.log("Webhook event marked as processed");
-          } else {
-            console.log("Webhook event left unprocessed due to execution failures");
+        // Handle changes webhooks (comments, etc.)
+        if (item.changes && Array.isArray(item.changes)) {
+          for (const change of item.changes) {
+            const { field, value } = change;
+
+            let eventType = "";
+            let triggerData: any = {};
+
+            switch (field) {
+              case "comments":
+                eventType = "comment_received";
+                triggerData = {
+                  comment_id: value.id,
+                  comment_text: value.text,
+                  from_id: value.from?.id,
+                  from_username: value.from?.username,
+                  media_id: value.media?.id,
+                  media_type: value.media?.media_product_type,
+                };
+                break;
+              case "messages":
+                eventType = "dm_received";
+                // Handle both value.message and value.messages[] structures
+                const msgData = value.message || (value.messages && value.messages[0]);
+                if (msgData) {
+                  triggerData = {
+                    message_id: msgData.mid || msgData.id || value.id,
+                    message_text: msgData.text || value.text,
+                    sender_id: msgData.from?.id || value.from?.id || value.sender?.id,
+                    timestamp: msgData.created_time || value.created_time || value.timestamp,
+                  };
+                } else {
+                  // Fallback to value structure
+                  triggerData = {
+                    message_id: value.id,
+                    message_text: value.text,
+                    sender_id: value.from?.id || value.sender?.id,
+                    timestamp: value.created_time || value.timestamp,
+                  };
+                }
+                break;
+              case "mentions":
+                eventType = "mention_received";
+                triggerData = {
+                  mention_id: value.id,
+                  mention_text: value.text,
+                  from_id: value.from?.id,
+                  from_username: value.from?.username,
+                  media_id: value.media?.id,
+                };
+                break;
+              case "story_insights":
+              case "story_mentions":
+                eventType = "story_reply_received";
+                triggerData = {
+                  reply_id: value.id,
+                  reply_text: value.text,
+                  from_id: value.from?.id,
+                  from_username: value.from?.username,
+                };
+                break;
+              default:
+                console.log("Unknown webhook field:", field);
+                eventType = "unknown";
+                triggerData = { field, value };
+            }
+
+            console.log("Saving webhook event:", eventType, "for account:", account.username);
+
+            const webhookEvent = await storage.createWebhookEvent({
+              accountId: account.id,
+              eventType,
+              payload: triggerData,
+              processed: false,
+            });
+
+            const flows = await storage.getActiveFlows();
+            const matchingFlows = flows.filter(
+              (f) =>
+                f.accountId === account.id &&
+                f.nodes.some(
+                  (n: any) => n.type === "trigger" && n.data.triggerType === eventType
+                )
+            );
+
+            let allExecutionsSuccessful = matchingFlows.length > 0;
+            
+            for (const flow of matchingFlows) {
+              const execution = await storage.createExecution({
+                flowId: flow.id,
+                accountId: account.id,
+                triggerType: eventType,
+                triggerData,
+                status: "running",
+                executionPath: [],
+                errorMessage: null,
+              });
+
+              try {
+                const api = new InstagramAPI(account.accessToken);
+                const engine = new FlowEngine(api, flow, triggerData);
+                const result = await engine.execute();
+
+                await storage.updateExecution(execution.id, {
+                  status: result.success ? "success" : "failed",
+                  executionPath: result.executionPath,
+                  errorMessage: result.error || null,
+                });
+                
+                console.log("Flow execution completed:", execution.id, result.success ? "success" : "failed");
+                
+                if (!result.success) {
+                  allExecutionsSuccessful = false;
+                }
+              } catch (error: any) {
+                console.error("Flow execution error:", error);
+                await storage.updateExecution(execution.id, {
+                  status: "failed",
+                  errorMessage: error.message,
+                });
+                allExecutionsSuccessful = false;
+              }
+            }
+
+            if (allExecutionsSuccessful) {
+              await storage.markWebhookEventProcessed(webhookEvent.id);
+              console.log("Webhook event marked as processed");
+            } else {
+              console.log("Webhook event left unprocessed due to execution failures");
+            }
           }
         }
       }

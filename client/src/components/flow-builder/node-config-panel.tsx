@@ -152,12 +152,17 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                 {(selectedNode.data.conditions || []).map((condition: any, index: number) => (
                   <Card key={index} className="p-3">
                     <div className="space-y-2">
-                      <Input
-                        placeholder="Field (e.g., message_text)"
-                        value={condition.field}
-                        onChange={(e) => updateCondition(index, { field: e.target.value })}
-                        data-testid={`input-condition-field-${index}`}
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          placeholder="Field (e.g., comment_text, message_text)"
+                          value={condition.field}
+                          onChange={(e) => updateCondition(index, { field: e.target.value })}
+                          data-testid={`input-condition-field-${index}`}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Available fields: comment_text, comment_id, from_username, from_id, message_text, message_id, sender_id
+                        </p>
+                      </div>
                       <Select
                         value={condition.operator}
                         onValueChange={(value) => updateCondition(index, { operator: value })}

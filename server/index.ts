@@ -45,7 +45,7 @@ app.use((req, res, next) => {
     await seedTemplates();
   }
 
-  const server = await registerRoutes(app);
+  const server = registerRoutes(app, storage);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
