@@ -22,6 +22,14 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Instagram DM API Fix (October 12, 2025)**: Fixed DM sending to match Instagram Graph API v24.0 requirements
+  - **CRITICAL FIX**: Updated DM endpoint from `/me/messages` to `/{conversation_id}/messages`
+  - Changed request format from `{recipient: {id}, message: {text}}` to `{message: {text}}`
+  - Added `conversation_id` extraction from DM webhook events in flow engine
+  - Updated both `send_dm` and `send_link` actions to use conversation_id
+  - Added Content-Type: application/json header to DM requests
+  - Enhanced error logging to show full Instagram API error responses
+
 - **Database Migration (October 11, 2025)**: Migrated from in-memory storage to PostgreSQL
   - Implemented DatabaseStorage class with full Drizzle ORM integration
   - Successfully pushed schema and migrated all CRUD operations
@@ -134,7 +142,8 @@ Required secrets:
 
 ## Technical Notes
 - Uses PostgreSQL database with Drizzle ORM for persistence
-- Instagram API calls require valid access tokens
+- Instagram API calls require valid access tokens with `instagram_business_manage_messages` and `instagram_business_manage_comments` scopes
+- **DM Actions**: Use `conversation_id` (not user_id) extracted from webhook events. API endpoint: `/{conversation_id}/messages` with body `{message: {text: "..."}}`
 - Webhooks need to be configured in Meta for Developers console
 - Flow execution is asynchronous with error handling
 - All dates stored as JavaScript Date objects  

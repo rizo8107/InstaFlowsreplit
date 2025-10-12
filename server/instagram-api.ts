@@ -128,39 +128,38 @@ export class InstagramAPI {
   }
 
   // Direct Messages
-  async sendDirectMessage(recipientId: string, message: string): Promise<any> {
+  async sendDirectMessage(conversationId: string, message: string): Promise<any> {
     try {
-      // Instagram requires the Page/User ID in the endpoint
-      const endpoint = this.instagramUserId 
-        ? `${GRAPH_API_BASE}/${this.instagramUserId}/messages`
-        : `${GRAPH_API_BASE}/me/messages`;
+      // Use conversation ID endpoint as per Instagram Graph API docs
+      const endpoint = `${GRAPH_API_BASE}/${conversationId}/messages`;
       
-      console.log(`[InstagramAPI] Sending message to ${recipientId} via ${endpoint}`);
+      console.log(`[InstagramAPI] Sending DM to conversation ${conversationId} via ${endpoint}`);
       console.log(`[InstagramAPI] Request body:`, JSON.stringify({
-        recipient: { id: recipientId },
         message: { text: message },
       }));
       
       const response = await axios.post(
         endpoint,
         {
-          recipient: { id: recipientId },
           message: { text: message },
         },
         {
           params: {
             access_token: this.accessToken,
           },
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
       );
-      console.log(`[InstagramAPI] Message sent successfully:`, response.data);
+      console.log(`[InstagramAPI] DM sent successfully:`, response.data);
       return response.data;
     } catch (error: any) {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
       
-      console.error(`[InstagramAPI] Error sending message:`, errorDetails);
+      console.error(`[InstagramAPI] Error sending DM:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
       
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
