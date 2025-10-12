@@ -30,7 +30,7 @@ import type { Contact, InstagramAccount } from "@shared/schema";
 export default function Contacts() {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [newContact, setNewContact] = useState({
     accountId: "",
     instagramUserId: "",
@@ -44,7 +44,7 @@ export default function Contacts() {
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts", selectedAccountId],
     queryFn: () => 
-      selectedAccountId 
+      selectedAccountId && selectedAccountId !== "all"
         ? fetch(`/api/contacts?accountId=${selectedAccountId}`).then(r => r.json())
         : fetch("/api/contacts").then(r => r.json()),
   });
@@ -197,7 +197,7 @@ export default function Contacts() {
                   <SelectValue placeholder="All accounts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All accounts</SelectItem>
+                  <SelectItem value="all">All accounts</SelectItem>
                   {accounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       @{account.username}
