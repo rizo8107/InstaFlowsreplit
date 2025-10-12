@@ -43,11 +43,11 @@ export function CustomEdge({
           <Button
             variant="ghost"
             size="icon"
-            className="h-5 w-5 opacity-0 hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity bg-background border border-border"
+            className="h-6 w-6 bg-background border border-border hover:bg-destructive hover:text-destructive-foreground hover:border-destructive shadow-sm"
             onClick={onEdgeClick}
             data-testid={`button-delete-edge-${id}`}
           >
-            <X className="h-3 w-3" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </EdgeLabelRenderer>
