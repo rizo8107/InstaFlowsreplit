@@ -1,13 +1,18 @@
 # Production Webhook Setup Guide
 
-## ✅ What's Fixed
+## ✅ Critical Fixes Applied
 
-The webhook system now automatically works in **both development and production** environments!
+### Fixed Issues:
+1. **🔧 Corrected API Endpoint**: Changed from `graph.facebook.com` to `graph.instagram.com` for webhook subscriptions (per Instagram official docs)
+2. **🔐 Database-First Token**: Webhook verify token stored in database with environment fallback
+3. **🚀 Auto-Subscription**: Webhook subscription now works automatically when Instagram accounts connect
+4. **📊 Enhanced Logging**: Added detailed logging to debug webhook verification and subscription
 
 ### Changes Made:
-1. **Database-First Approach**: Webhook verify token is stored in the database
-2. **Auto-Sync from Environment**: If token exists in Replit Secrets but not in database, it automatically syncs
-3. **Production Ready**: Both development and production use the same database, so token is accessible everywhere
+1. **Correct API Base URL**: Now uses `graph.instagram.com/v24.0/{instagram-account-id}/subscribed_apps` for subscriptions
+2. **Database-First Approach**: Webhook verify token stored in database with auto-sync from Replit Secrets
+3. **Production Ready**: Both development and production share the same database and token
+4. **Debug Logging**: Console logs show exactly what token is being used and why verification passes/fails
 
 ## 🚀 How to Set Up Webhooks in Production
 

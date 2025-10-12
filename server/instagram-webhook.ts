@@ -30,11 +30,14 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
 
   async subscribeToWebhooks(instagramUserId: string, accessToken: string): Promise<boolean> {
     try {
-      console.log(`Subscribing webhooks for Instagram account: ${instagramUserId}`);
+      console.log(`\n🔔 Subscribing webhooks for Instagram account: ${instagramUserId}`);
       
-      // Per Instagram documentation: POST /{instagram-account-id}/subscribed_apps
-      // Note: Uses graph.facebook.com, not graph.instagram.com
-      const subscribeUrl = `https://graph.facebook.com/v24.0/${instagramUserId}/subscribed_apps`;
+      // Per Instagram official documentation: POST /{instagram-account-id}/subscribed_apps
+      // IMPORTANT: Must use graph.instagram.com (not graph.facebook.com)
+      const subscribeUrl = `https://graph.instagram.com/v24.0/${instagramUserId}/subscribed_apps`;
+      
+      console.log(`📡 Subscription URL: ${subscribeUrl}`);
+      console.log(`🔑 Using access token: ${accessToken.substring(0, 20)}...`);
       
       const response = await fetch(subscribeUrl, {
         method: 'POST',
@@ -48,20 +51,28 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
       });
       
       const data = await response.json();
+      console.log(`📥 Subscription response:`, JSON.stringify(data, null, 2));
       
       if (response.ok && data.success) {
         console.log(`✅ Webhooks subscribed successfully for account ${instagramUserId}`);
         return true;
       } else {
-        console.error(`❌ Failed to subscribe webhooks for account ${instagramUserId}:`, data);
+        console.error(`❌ Failed to subscribe webhooks for account ${instagramUserId}`);
+        console.error(`Response status: ${response.status}`);
+        console.error(`Error details:`, data);
         
         // Check if it's a permissions error
-        if (data.error && data.error.code === 200) {
-          console.log("\n⚠️ Permissions issue detected.");
-          console.log("Make sure your app has the following permissions:");
-          console.log("- instagram_business_basic");
-          console.log("- instagram_business_manage_comments");
-          console.log("- instagram_business_manage_messages");
+        if (data.error) {
+          console.log(`\n⚠️ Error Code: ${data.error.code}`);
+          console.log(`⚠️ Error Message: ${data.error.message}`);
+          
+          if (data.error.code === 200 || data.error.message?.includes('permission')) {
+            console.log("\n⚠️ Permissions issue detected.");
+            console.log("Make sure your app has the following permissions:");
+            console.log("- instagram_business_basic");
+            console.log("- instagram_business_manage_comments");
+            console.log("- instagram_business_manage_messages");
+          }
         }
         
         // Provide manual setup instructions
@@ -73,11 +84,12 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
         console.log(`4. Verify Token: ${verifyToken}`);
         console.log('5. Subscribe to fields: comments, messages, mentions, story_insights');
         console.log('6. Click "Verify and Save"');
+        console.log('=====================================\n');
         
         return false;
       }
     } catch (error) {
-      console.error("Error subscribing to webhooks:", error);
+      console.error("❌ Error subscribing to webhooks:", error);
       return false;
     }
   }
@@ -86,8 +98,8 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
     try {
       // Check account-level subscriptions
       // GET /{instagram-account-id}/subscribed_apps
-      // Note: Uses graph.facebook.com, not graph.instagram.com
-      const checkUrl = `https://graph.facebook.com/v24.0/${instagramUserId}/subscribed_apps`;
+      // IMPORTANT: Must use graph.instagram.com (not graph.facebook.com)
+      const checkUrl = `https://graph.instagram.com/v24.0/${instagramUserId}/subscribed_apps`;
       
       const response = await fetch(`${checkUrl}?access_token=${accessToken}`);
       const data = await response.json();

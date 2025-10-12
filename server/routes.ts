@@ -506,14 +506,23 @@ export function registerRoutes(app: Express, storage: IStorage) {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
+    console.log(`\n🔐 Webhook Verification Request:`);
+    console.log(`  Mode: ${mode}`);
+    console.log(`  Received Token: ${token}`);
+    console.log(`  Challenge: ${challenge}`);
+
     // Check database first, then fall back to env var
     const dbSetting = await storage.getSetting('webhook_verify_token');
     const verifyToken = dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+    
+    console.log(`  Expected Token (from ${dbSetting ? 'database' : 'env'}): ${verifyToken}`);
+    console.log(`  Tokens Match: ${token === verifyToken}`);
 
     if (mode === "subscribe" && token === verifyToken) {
-      console.log("Webhook verified");
+      console.log("✅ Webhook verified successfully!\n");
       res.status(200).send(challenge);
     } else {
+      console.log("❌ Webhook verification FAILED - token mismatch\n");
       res.sendStatus(403);
     }
   });
