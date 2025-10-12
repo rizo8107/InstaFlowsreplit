@@ -544,6 +544,41 @@ export default function FlowBuilder() {
                       </div>
                     )}
 
+                    {selectedExecution.nodeResults && selectedExecution.nodeResults.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Node Execution Results</h4>
+                        <div className="space-y-2">
+                          {selectedExecution.nodeResults.map((nodeResult: any, idx: number) => (
+                            <Card key={idx} className={nodeResult.success ? "border-green-500/30" : "border-destructive/30"}>
+                              <CardContent className="p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={nodeResult.success ? "default" : "destructive"} className="text-xs">
+                                      {nodeResult.nodeType}
+                                    </Badge>
+                                    <span className="text-xs font-mono text-muted-foreground">{nodeResult.nodeId}</span>
+                                  </div>
+                                  <Badge variant={nodeResult.success ? "outline" : "destructive"} className="text-xs">
+                                    {nodeResult.success ? "✓" : "✗"}
+                                  </Badge>
+                                </div>
+                                {nodeResult.output && (
+                                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto mt-2">
+                                    {JSON.stringify(nodeResult.output, null, 2)}
+                                  </pre>
+                                )}
+                                {nodeResult.error && (
+                                  <div className="text-xs text-destructive mt-2">
+                                    Error: {nodeResult.error}
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {selectedExecution.errorMessage && (
                       <div>
                         <h4 className="font-semibold text-sm mb-2 text-destructive">Error</h4>

@@ -176,6 +176,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
         await storage.updateExecution(execution.id, {
           status: result.success ? "success" : "failed",
           executionPath: result.executionPath,
+          nodeResults: result.nodeResults as any,
           errorMessage: result.error || null,
         });
 
@@ -393,6 +394,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
                 await storage.updateExecution(execution.id, {
                   status: result.success ? "success" : "failed",
                   executionPath: result.executionPath,
+                  nodeResults: result.nodeResults as any,
                   errorMessage: result.error || null,
                 });
                 
@@ -526,6 +528,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
                 await storage.updateExecution(execution.id, {
                   status: result.success ? "success" : "failed",
                   executionPath: result.executionPath,
+                  nodeResults: result.nodeResults as any,
                   errorMessage: result.error || null,
                 });
                 

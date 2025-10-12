@@ -113,6 +113,7 @@ export const flowExecutions = pgTable("flow_executions", {
   triggerData: jsonb("trigger_data").notNull(),
   status: text("status").notNull(), // success, failed, running
   executionPath: jsonb("execution_path").$type<string[]>(),
+  nodeResults: jsonb("node_results"),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
