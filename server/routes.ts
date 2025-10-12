@@ -1,25 +1,36 @@
 import express from "express";
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import type { IStorage } from "./storage";
 import type { InsertInstagramAccount, InsertFlow, UpdateFlow, InsertFlowExecution } from "@shared/schema";
 import { InstagramAPI } from "./instagram-api";
 import { FlowEngine } from "./flow-engine";
 
+// Auth middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+}
+
 export function registerRoutes(app: Express, storage: IStorage) {
   // Instagram Accounts
-  app.get("/api/accounts", async (req, res) => {
+  app.get("/api/accounts", requireAuth, async (req, res) => {
     try {
-      const accounts = await storage.getAllAccounts();
+      const accounts = await storage.getUserAccounts(req.user!.id);
       res.json(accounts);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/accounts", async (req, res) => {
+  app.post("/api/accounts", requireAuth, async (req, res) => {
     try {
-      const accountData: InsertInstagramAccount = req.body;
+      const accountData: InsertInstagramAccount = {
+        ...req.body,
+        userId: req.user!.id,
+      };
       const account = await storage.createAccount(accountData);
       res.json(account);
     } catch (error: any) {
@@ -27,9 +38,18 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.patch("/api/accounts/:id", async (req, res) => {
+  app.patch("/api/accounts/:id", requireAuth, async (req, res) => {
     try {
-      const account = await storage.updateAccount(req.params.id, req.body);
+      // Verify account belongs to user
+      const existingAccount = await storage.getAccount(req.params.id);
+      if (!existingAccount || existingAccount.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      
+      // Remove userId from updates to prevent reassignment
+      const { userId, ...updates } = req.body;
+      
+      const account = await storage.updateAccount(req.params.id, updates);
       if (!account) {
         return res.status(404).json({ error: "Account not found" });
       }
@@ -39,8 +59,14 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.delete("/api/accounts/:id", async (req, res) => {
+  app.delete("/api/accounts/:id", requireAuth, async (req, res) => {
     try {
+      // Verify account belongs to user
+      const existingAccount = await storage.getAccount(req.params.id);
+      if (!existingAccount || existingAccount.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      
       const success = await storage.deleteAccount(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Account not found" });
@@ -52,30 +78,48 @@ export function registerRoutes(app: Express, storage: IStorage) {
   });
 
   // Flows
-  app.get("/api/flows", async (req, res) => {
+  app.get("/api/flows", requireAuth, async (req, res) => {
     try {
-      const flows = await storage.getAllFlows();
+      // Get all flows for user's accounts
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      const accountIds = accounts.map(a => a.id);
+      const allFlows = await storage.getAllFlows();
+      const flows = allFlows.filter(f => accountIds.includes(f.accountId));
       res.json(flows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/flows/:id", async (req, res) => {
+  app.get("/api/flows/:id", requireAuth, async (req, res) => {
     try {
       const flow = await storage.getFlow(req.params.id);
       if (!flow) {
         return res.status(404).json({ error: "Flow not found" });
       }
+      
+      // Verify flow belongs to user's account
+      const account = await storage.getAccount(flow.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
       res.json(flow);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/flows", async (req, res) => {
+  app.post("/api/flows", requireAuth, async (req, res) => {
     try {
       const flowData: InsertFlow = req.body;
+      
+      // Verify account belongs to user
+      const account = await storage.getAccount(flowData.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const flow = await storage.createFlow(flowData);
       res.json(flow);
     } catch (error: any) {
@@ -83,21 +127,45 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.patch("/api/flows/:id", async (req, res) => {
+  app.patch("/api/flows/:id", requireAuth, async (req, res) => {
     try {
-      const updates: UpdateFlow = req.body;
-      const flow = await storage.updateFlow(req.params.id, updates);
+      const flow = await storage.getFlow(req.params.id);
       if (!flow) {
         return res.status(404).json({ error: "Flow not found" });
       }
-      res.json(flow);
+      
+      // Verify flow belongs to user's account
+      const account = await storage.getAccount(flow.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
+      // Remove accountId from updates to prevent reassignment
+      const { accountId, ...updates } = req.body;
+      
+      const updatedFlow = await storage.updateFlow(req.params.id, updates as UpdateFlow);
+      if (!updatedFlow) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      res.json(updatedFlow);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.delete("/api/flows/:id", async (req, res) => {
+  app.delete("/api/flows/:id", requireAuth, async (req, res) => {
     try {
+      const flow = await storage.getFlow(req.params.id);
+      if (!flow) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
+      // Verify flow belongs to user's account
+      const account = await storage.getAccount(flow.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
       const success = await storage.deleteFlow(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Flow not found" });
@@ -109,27 +177,44 @@ export function registerRoutes(app: Express, storage: IStorage) {
   });
 
   // Executions
-  app.get("/api/executions", async (req, res) => {
+  app.get("/api/executions", requireAuth, async (req, res) => {
     try {
-      const executions = await storage.getAllExecutions();
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      const accountIds = accounts.map(a => a.id);
+      const allExecutions = await storage.getAllExecutions();
+      const executions = allExecutions.filter(e => accountIds.includes(e.accountId));
       res.json(executions);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/executions/recent", async (req, res) => {
+  app.get("/api/executions/recent", requireAuth, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
-      const executions = await storage.getRecentExecutions(limit);
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      const accountIds = accounts.map(a => a.id);
+      const allExecutions = await storage.getRecentExecutions(limit * 10); // Get more than needed to filter
+      const executions = allExecutions.filter(e => accountIds.includes(e.accountId)).slice(0, limit);
       res.json(executions);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/flows/:flowId/executions", async (req, res) => {
+  app.get("/api/flows/:flowId/executions", requireAuth, async (req, res) => {
     try {
+      const flow = await storage.getFlow(req.params.flowId);
+      if (!flow) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
+      // Verify flow belongs to user's account
+      const account = await storage.getAccount(flow.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
       const limit = parseInt(req.query.limit as string) || 20;
       const allExecutions = await storage.getExecutionsByFlow(req.params.flowId);
       const executions = allExecutions.slice(0, limit);
@@ -139,21 +224,22 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.post("/api/flows/:flowId/test", async (req, res) => {
+  app.post("/api/flows/:flowId/test", requireAuth, async (req, res) => {
     try {
       const flow = await storage.getFlow(req.params.flowId);
       if (!flow) {
+        return res.status(404).json({ error: "Flow not found" });
+      }
+      
+      // Verify flow belongs to user's account
+      const account = await storage.getAccount(flow.accountId);
+      if (!account || account.userId !== req.user!.id) {
         return res.status(404).json({ error: "Flow not found" });
       }
 
       const { triggerData } = req.body;
       if (!triggerData) {
         return res.status(400).json({ error: "triggerData is required" });
-      }
-
-      const account = await storage.getAccount(flow.accountId);
-      if (!account) {
-        return res.status(404).json({ error: "Account not found" });
       }
 
       console.log(`[Manual Test] Testing flow ${flow.name} with trigger data:`, triggerData);
@@ -218,19 +304,25 @@ export function registerRoutes(app: Express, storage: IStorage) {
   });
 
   // Webhook Events
-  app.get("/api/webhook-events", async (req, res) => {
+  app.get("/api/webhook-events", requireAuth, async (req, res) => {
     try {
-      const events = await storage.getAllWebhookEvents();
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      const accountIds = accounts.map(a => a.id);
+      const allEvents = await storage.getAllWebhookEvents();
+      const events = allEvents.filter(e => e.accountId && accountIds.includes(e.accountId));
       res.json(events);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.get("/api/webhook-events/recent", async (req, res) => {
+  app.get("/api/webhook-events/recent", requireAuth, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
-      const events = await storage.getRecentWebhookEvents(limit);
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      const accountIds = accounts.map(a => a.id);
+      const allEvents = await storage.getRecentWebhookEvents(limit * 10); // Get more than needed to filter
+      const events = allEvents.filter(e => e.accountId && accountIds.includes(e.accountId)).slice(0, limit);
       res.json(events);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -238,7 +330,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
   });
 
   // Flow Templates
-  app.get("/api/templates", async (req, res) => {
+  app.get("/api/templates", requireAuth, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
       const templates = category
@@ -250,7 +342,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.post("/api/templates/:id/use", async (req, res) => {
+  app.post("/api/templates/:id/use", requireAuth, async (req, res) => {
     try {
       const template = await storage.getTemplate(req.params.id);
       if (!template) {
@@ -265,6 +357,11 @@ export function registerRoutes(app: Express, storage: IStorage) {
       const account = await storage.getAccount(accountId);
       if (!account) {
         return res.status(404).json({ error: "Account not found" });
+      }
+      
+      // Verify account belongs to user
+      if (account.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const newFlow = await storage.createFlow({
@@ -285,7 +382,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
   });
 
   // Webhook Token Management
-  app.get("/api/webhook-token", async (req, res) => {
+  app.get("/api/webhook-token", requireAuth, async (req, res) => {
     try {
       const token = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
       res.json({ token: token || null, exists: !!token });
@@ -294,7 +391,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.post("/api/webhook-token/generate", async (req, res) => {
+  app.post("/api/webhook-token/generate", requireAuth, async (req, res) => {
     try {
       const crypto = await import('crypto');
       const token = crypto.randomBytes(32).toString('hex');
@@ -645,24 +742,37 @@ export function registerRoutes(app: Express, storage: IStorage) {
   });
 
   // Contacts
-  app.get("/api/contacts", async (req, res) => {
+  app.get("/api/contacts", requireAuth, async (req, res) => {
     try {
+      const accounts = await storage.getUserAccounts(req.user!.id);
+      const accountIds = accounts.map(a => a.id);
+      
       const accountId = req.query.accountId as string | undefined;
+      if (accountId && !accountIds.includes(accountId)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
       const contacts = accountId 
         ? await storage.getContactsByAccount(accountId)
-        : await storage.getAllContacts();
+        : await Promise.all(accountIds.map(id => storage.getContactsByAccount(id))).then(all => all.flat());
       res.json(contacts);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/contacts", async (req, res) => {
+  app.post("/api/contacts", requireAuth, async (req, res) => {
     try {
       const { accountId, instagramUserId, username } = req.body;
       
       if (!accountId || !instagramUserId || !username) {
         return res.status(400).json({ error: "Account ID, Instagram user ID, and username are required" });
+      }
+
+      // Verify account belongs to user
+      const account = await storage.getAccount(accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Forbidden" });
       }
 
       const contact = await storage.createContact({
@@ -677,9 +787,23 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.patch("/api/contacts/:id", async (req, res) => {
+  app.patch("/api/contacts/:id", requireAuth, async (req, res) => {
     try {
-      const contact = await storage.updateContact(req.params.id, req.body);
+      const existingContact = await storage.getContact(req.params.id);
+      if (!existingContact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Verify contact's account belongs to user
+      const account = await storage.getAccount(existingContact.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Remove accountId from updates to prevent reassignment
+      const { accountId, ...updates } = req.body;
+      
+      const contact = await storage.updateContact(req.params.id, updates);
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -689,8 +813,19 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.delete("/api/contacts/:id", async (req, res) => {
+  app.delete("/api/contacts/:id", requireAuth, async (req, res) => {
     try {
+      const existingContact = await storage.getContact(req.params.id);
+      if (!existingContact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Verify contact's account belongs to user
+      const account = await storage.getAccount(existingContact.accountId);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
       const success = await storage.deleteContact(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Contact not found" });
