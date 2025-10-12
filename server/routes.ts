@@ -353,6 +353,12 @@ export function registerRoutes(app: Express, storage: IStorage) {
         // Handle messaging webhooks (DMs)
         if (item.messaging && Array.isArray(item.messaging)) {
           for (const msg of item.messaging) {
+            // Skip echo messages (bot's own replies)
+            if (msg.message?.is_echo) {
+              console.log("Skipping echo message from bot itself");
+              continue;
+            }
+            
             const triggerData = {
               message_id: msg.message?.mid,
               message_text: msg.message?.text,

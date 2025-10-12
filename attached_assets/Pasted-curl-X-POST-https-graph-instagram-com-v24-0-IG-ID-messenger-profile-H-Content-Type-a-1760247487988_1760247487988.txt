@@ -1,0 +1,57 @@
+curl -X POST "https://graph.instagram.com/v24.0/<IG_ID>/messenger_profile"
+     -H "Content-Type: application/json" 
+     -d '{
+             "platform":"instagram",
+             "persistent_menu": [
+               {
+                 "composer_input_disabled": false,
+                 "locale": "default",
+                 "call_to_actions": [
+                   {
+                     "type": "postback",
+                     "title": "<MENU_ITEM_1_TEXT>",
+                     "payload": "<WEBHOOK_NOTIFICATION_CONTENT_FOR_MENU_ITEM_1>"
+                   },
+                   {
+                     "type": "postback",
+                     "title": "<MENU_ITEM_2_TEXT>"",
+                     "payload": "<WEBHOOK_NOTIFICATION_CONTENT_FOR_MENU_ITEM_2>"
+                   },
+                   {
+                     "type": "web_url",
+                     "title": "<URL_TEXT_MENU_ITEM_1>",
+                     "url": "DESTINATION_URL" 
+                     "webview_height_ratio": "full"
+                   },
+                 ],
+                 "locale": "pt_BR",
+                 "call_to_actions": [
+                   {
+                     "type": "postback",
+                     "title": "<MENU_ITEM_1_TEXT_FOR_pt_BR>",
+                     "payload": "<WEBHOOK_NOTIFICATION_CONTENT_FOR_MENU_ITEM_1_FOR_pt_BR>"
+                   },
+                   {
+                     "type": "postback",
+                     "title": "<MENU_ITEM_2_TEXT>"",
+                     "payload": "<WEBHOOK_NOTIFICATION_CONTENT_FOR_MENU_ITEM_2_FOR_pt_BR>"
+                   },
+                   {
+                     "type": "web_url",
+                     "title": "<URL_TEXT_MENU_ITEM_1_FOR_pt_BR>",
+                     "url": "DESTINATION_URL" 
+                     "webview_height_ratio": "full"
+                   },
+                 ]
+               }
+             ]
+         }' 
+Get a persistent menu
+To get the contents of a persistent menu, send a GET request to the /<IG_ID>/messenger_profile endpoint with the platform property set to instagram and persistent_menu property with the fields parameter set to persistent_menu.
+
+Sample Request
+Formatted for readability.
+
+curl -X GET "https://graph.instagram.com/v24.0/<IG_ID>
+  ?fields=persistent_menu
+  &platform=instagram"
