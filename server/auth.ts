@@ -251,12 +251,12 @@ export function setupAuth(app: Express) {
 
       // Step 5: Automatically subscribe to webhooks (fire-and-forget, non-blocking)
       webhookService.subscribeToWebhooks(igUserId, finalToken)
-        .then(subscribed => {
+        .then(async subscribed => {
           if (subscribed) {
             console.log("✅ Webhooks configured successfully for user:", igUserId);
           } else {
             console.log("⚠️ Webhook subscription needs manual setup for user:", igUserId);
-            console.log(webhookService.getSetupInstructions());
+            console.log(await webhookService.getSetupInstructions());
           }
         })
         .catch(webhookError => {

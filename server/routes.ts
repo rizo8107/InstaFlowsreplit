@@ -384,8 +384,15 @@ export function registerRoutes(app: Express, storage: IStorage) {
   // Webhook Token Management
   app.get("/api/webhook-token", requireAuth, async (req, res) => {
     try {
-      // Check database first, then fall back to env var
-      const dbSetting = await storage.getSetting('webhook_verify_token');
+      // Check database first
+      let dbSetting = await storage.getSetting('webhook_verify_token');
+      
+      // If not in database but exists in env, auto-save to database for production
+      if (!dbSetting && process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN) {
+        await storage.setSetting('webhook_verify_token', process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN);
+        dbSetting = await storage.getSetting('webhook_verify_token');
+      }
+      
       const token = dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
       res.json({ 
         token: token || null, 
@@ -454,7 +461,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
       
       res.json({
         ...status,
-        setupInstructions: webhookService.getSetupInstructions(),
+        setupInstructions: await webhookService.getSetupInstructions(),
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -486,7 +493,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
         message: subscribed 
           ? "Webhooks subscribed successfully" 
           : "Manual webhook setup required. See setup instructions.",
-        setupInstructions: !subscribed ? webhookService.getSetupInstructions() : undefined,
+        setupInstructions: !subscribed ? await webhookService.getSetupInstructions() : undefined,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

@@ -8,13 +8,11 @@ export interface WebhookSubscriptionService {
 export class InstagramWebhookService implements WebhookSubscriptionService {
   private appId: string;
   private appSecret: string;
-  private verifyToken: string;
   private callbackUrl: string;
 
   constructor() {
     this.appId = process.env.INSTAGRAM_APP_ID || '';
     this.appSecret = process.env.INSTAGRAM_APP_SECRET || '';
-    this.verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || '';
     
     const baseUrl = process.env.OAUTH_BASE_URL || 
       (process.env.REPLIT_DOMAINS 
@@ -22,6 +20,12 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
         : 'http://localhost:5000');
     
     this.callbackUrl = `${baseUrl}/api/webhooks/instagram`;
+  }
+
+  private async getVerifyToken(): Promise<string> {
+    const { storage } = await import('./storage');
+    const dbSetting = await storage.getSetting('webhook_verify_token');
+    return dbSetting?.value || process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || '';
   }
 
   async subscribeToWebhooks(instagramUserId: string, accessToken: string): Promise<boolean> {
@@ -61,11 +65,12 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
         }
         
         // Provide manual setup instructions
+        const verifyToken = await this.getVerifyToken();
         console.log("\n=== MANUAL WEBHOOK SETUP (Required) ===");
         console.log(`1. Go to: https://developers.facebook.com/apps/${this.appId}/webhooks/`);
         console.log('2. Select "Instagram" as the object type');
         console.log(`3. Callback URL: ${this.callbackUrl}`);
-        console.log(`4. Verify Token: ${this.verifyToken}`);
+        console.log(`4. Verify Token: ${verifyToken}`);
         console.log('5. Subscribe to fields: comments, messages, mentions, story_insights');
         console.log('6. Click "Verify and Save"');
         
@@ -123,7 +128,8 @@ export class InstagramWebhookService implements WebhookSubscriptionService {
     }
   }
 
-  getSetupInstructions(): string {
+  async getSetupInstructions(): Promise<string> {
+    const verifyToken = await this.getVerifyToken();
     return `
 === INSTAGRAM WEBHOOK SETUP ===
 
@@ -137,7 +143,7 @@ METHOD 1: Meta App Dashboard (Recommended - One-time setup for ALL accounts)
 
 3. Configure webhook:
    - Callback URL: ${this.callbackUrl}
-   - Verify Token: ${this.verifyToken}
+   - Verify Token: ${verifyToken}
 
 4. Subscribe to these fields:
    ✓ comments
