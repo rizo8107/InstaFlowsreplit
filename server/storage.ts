@@ -12,21 +12,37 @@ import {
   type InsertFlowTemplate,
   type Contact,
   type InsertContact,
+  type User,
+  type InsertUser,
   instagramAccounts,
   flows,
   flowExecutions,
   webhookEvents,
   flowTemplates,
-  contacts
+  contacts,
+  users
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
+  // Users
+  getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
+  // Session Store
+  sessionStore: session.Store;
+
   // Instagram Accounts
   getAccount(id: string): Promise<InstagramAccount | undefined>;
   getAccountByUserId(instagramUserId: string): Promise<InstagramAccount | undefined>;
   getAllAccounts(): Promise<InstagramAccount[]>;
+  getUserAccounts(userId: string): Promise<InstagramAccount[]>;
   createAccount(account: InsertInstagramAccount): Promise<InstagramAccount>;
   updateAccount(id: string, updates: Partial<InstagramAccount>): Promise<InstagramAccount | undefined>;
   deleteAccount(id: string): Promise<boolean>;
@@ -76,6 +92,33 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000,
+    });
+  }
+
+  // Users
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
   // Instagram Accounts
   async getAccount(id: string): Promise<InstagramAccount | undefined> {
     const [account] = await db.select().from(instagramAccounts).where(eq(instagramAccounts.id, id));
@@ -89,6 +132,10 @@ export class DatabaseStorage implements IStorage {
 
   async getAllAccounts(): Promise<InstagramAccount[]> {
     return await db.select().from(instagramAccounts).orderBy(desc(instagramAccounts.createdAt));
+  }
+
+  async getUserAccounts(userId: string): Promise<InstagramAccount[]> {
+    return await db.select().from(instagramAccounts).where(eq(instagramAccounts.userId, userId)).orderBy(desc(instagramAccounts.createdAt));
   }
 
   async createAccount(insertAccount: InsertInstagramAccount): Promise<InstagramAccount> {
