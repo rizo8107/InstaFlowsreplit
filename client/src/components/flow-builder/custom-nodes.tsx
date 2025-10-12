@@ -106,6 +106,12 @@ export const ConditionNode = memo(({ data }: NodeProps) => {
           )}
           {data.label && <p className="text-xs text-muted-foreground">{data.label}</p>}
         </div>
+        
+        {/* Branch Labels */}
+        <div className="flex justify-between px-2 pt-2 text-[10px] font-medium">
+          <span className="text-green-600 dark:text-green-400">TRUE</span>
+          <span className="text-red-600 dark:text-red-400">FALSE</span>
+        </div>
       </CardContent>
     </Card>
   );
