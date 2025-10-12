@@ -22,6 +22,16 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **UI Improvements & Button Templates (October 12, 2025)**: Enhanced condition configuration and added Instagram DM button template support
+  - **Condition Field Dropdown**: Converted condition field input to dropdown with predefined options (message_text, comment_text, username, user_id, sender_id, comment_id, message_id, media_id)
+  - **Improved Operator Labels**: Updated "not_contains" to "Does Not Contain" and "not_equals" to "Does Not Equal" for clarity
+  - **Button Template Support**: Added full Instagram Generic Template support for DM actions
+    - Up to 3 buttons per message with web_url (opens URL) or postback (webhook callback) types
+    - Optional subtitle field for richer message templates
+    - Buttons configured per flow node with title, URL, and payload options
+    - Flow engine automatically detects button config and routes to appropriate API method
+  - **Template Flow Creation Fixed**: Backend now properly creates flows from templates instead of just returning template data
+
 - **Complete Instagram Graph API v24.0 Compliance (October 12, 2025)**: Fixed all action nodes to match Instagram Graph API v24.0
   - **Updated API Base URL**: Changed from `graph.instagram.com` to `graph.instagram.com/v24.0`
   - **DM Actions Fixed**: 
