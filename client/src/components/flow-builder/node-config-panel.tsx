@@ -251,7 +251,7 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
             {/* Action-specific fields */}
             {(selectedNode.data.actionType === "reply_comment" || selectedNode.data.actionType === "send_dm") && (
               <div className="space-y-2">
-                <Label htmlFor="action-message">Message</Label>
+                <Label htmlFor="action-message">{selectedNode.data.actionType === "send_dm" ? "Message / Title" : "Message"}</Label>
                 <Textarea
                   id="action-message"
                   placeholder="Enter your message..."
@@ -265,6 +265,133 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                   Use variables: {"{username}"}, {"{message_text}"}
                 </p>
               </div>
+            )}
+
+            {/* Button Template for DM */}
+            {selectedNode.data.actionType === "send_dm" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="action-subtitle">Subtitle (Optional)</Label>
+                  <Input
+                    id="action-subtitle"
+                    placeholder="Add a subtitle for button template"
+                    value={selectedNode.data.actionConfig?.subtitle || ""}
+                    onChange={(e) => handleUpdate({ 
+                      actionConfig: { ...selectedNode.data.actionConfig, subtitle: e.target.value }
+                    })}
+                    data-testid="input-action-subtitle"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Buttons (Optional, max 3)</Label>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        const buttons = selectedNode.data.actionConfig?.buttons || [];
+                        if (buttons.length < 3) {
+                          handleUpdate({
+                            actionConfig: {
+                              ...selectedNode.data.actionConfig,
+                              buttons: [...buttons, { type: 'web_url', title: '', url: '' }]
+                            }
+                          });
+                        }
+                      }}
+                      disabled={(selectedNode.data.actionConfig?.buttons || []).length >= 3}
+                      data-testid="button-add-dm-button"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Button
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {(selectedNode.data.actionConfig?.buttons || []).map((button: any, index: number) => (
+                      <Card key={index} className="p-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge variant="outline">Button {index + 1}</Badge>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                const buttons = [...(selectedNode.data.actionConfig?.buttons || [])];
+                                buttons.splice(index, 1);
+                                handleUpdate({
+                                  actionConfig: { ...selectedNode.data.actionConfig, buttons }
+                                });
+                              }}
+                              data-testid={`button-remove-dm-button-${index}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <Select
+                            value={button.type}
+                            onValueChange={(value) => {
+                              const buttons = [...(selectedNode.data.actionConfig?.buttons || [])];
+                              buttons[index] = { ...buttons[index], type: value };
+                              handleUpdate({
+                                actionConfig: { ...selectedNode.data.actionConfig, buttons }
+                              });
+                            }}
+                          >
+                            <SelectTrigger data-testid={`select-button-type-${index}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="web_url">Web URL</SelectItem>
+                              <SelectItem value="postback">Postback</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            placeholder="Button title"
+                            value={button.title || ""}
+                            onChange={(e) => {
+                              const buttons = [...(selectedNode.data.actionConfig?.buttons || [])];
+                              buttons[index] = { ...buttons[index], title: e.target.value };
+                              handleUpdate({
+                                actionConfig: { ...selectedNode.data.actionConfig, buttons }
+                              });
+                            }}
+                            data-testid={`input-button-title-${index}`}
+                          />
+                          {button.type === 'web_url' && (
+                            <Input
+                              type="url"
+                              placeholder="https://example.com"
+                              value={button.url || ""}
+                              onChange={(e) => {
+                                const buttons = [...(selectedNode.data.actionConfig?.buttons || [])];
+                                buttons[index] = { ...buttons[index], url: e.target.value };
+                                handleUpdate({
+                                  actionConfig: { ...selectedNode.data.actionConfig, buttons }
+                                });
+                              }}
+                              data-testid={`input-button-url-${index}`}
+                            />
+                          )}
+                          {button.type === 'postback' && (
+                            <Input
+                              placeholder="Payload (e.g., START_CHAT)"
+                              value={button.payload || ""}
+                              onChange={(e) => {
+                                const buttons = [...(selectedNode.data.actionConfig?.buttons || [])];
+                                buttons[index] = { ...buttons[index], payload: e.target.value };
+                                handleUpdate({
+                                  actionConfig: { ...selectedNode.data.actionConfig, buttons }
+                                });
+                              }}
+                              data-testid={`input-button-payload-${index}`}
+                            />
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
 
             {selectedNode.data.actionType === "send_link" && (

@@ -197,6 +197,68 @@ export class InstagramAPI {
     }
   }
 
+  async sendButtonTemplate(
+    recipientId: string, 
+    title: string, 
+    subtitle: string | undefined,
+    buttons: Array<{type: 'web_url' | 'postback', title: string, url?: string, payload?: string}>
+  ): Promise<any> {
+    try {
+      const endpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
+      
+      const requestBody = {
+        recipient: { id: recipientId },
+        message: {
+          attachment: {
+            type: "template",
+            payload: {
+              template_type: "generic",
+              elements: [
+                {
+                  title: title,
+                  ...(subtitle && { subtitle: subtitle }),
+                  buttons: buttons.map(btn => ({
+                    type: btn.type,
+                    title: btn.title,
+                    ...(btn.type === 'web_url' && btn.url && { url: btn.url }),
+                    ...(btn.type === 'postback' && btn.payload && { payload: btn.payload })
+                  }))
+                }
+              ]
+            }
+          }
+        }
+      };
+      
+      console.log(`[InstagramAPI] Sending button template to recipient ${recipientId}`);
+      console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
+      
+      const response = await axios.post(
+        endpoint,
+        requestBody,
+        {
+          params: {
+            access_token: this.accessToken,
+          },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      console.log(`[InstagramAPI] Button template sent successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error sending button template:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
+    }
+  }
+
   async getConversations(): Promise<any> {
     const response = await axios.get(
       `${GRAPH_API_BASE}/me/conversations`,

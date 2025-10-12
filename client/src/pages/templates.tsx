@@ -41,9 +41,9 @@ export default function Templates() {
 
   const useTemplateMutation = useMutation({
     mutationFn: async (data: { templateId: string; accountId: string; name: string }) => {
-      const response = await apiRequest(`/api/templates/${data.templateId}/use`, {
-        method: "POST",
-        body: JSON.stringify({ accountId: data.accountId, name: data.name }),
+      const response = await apiRequest("POST", `/api/templates/${data.templateId}/use`, { 
+        accountId: data.accountId, 
+        name: data.name 
       });
       return response;
     },

@@ -252,8 +252,28 @@ export function registerRoutes(app: Express, storage: IStorage) {
         return res.status(404).json({ error: "Template not found" });
       }
 
+      const { accountId, name } = req.body;
+      if (!accountId || !name) {
+        return res.status(400).json({ error: "Account ID and flow name are required" });
+      }
+
+      const account = await storage.getAccount(accountId);
+      if (!account) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      const newFlow = await storage.createFlow({
+        name: name,
+        description: template.description,
+        accountId: accountId,
+        isActive: false,
+        nodes: template.nodes,
+        edges: template.edges,
+      });
+
       await storage.incrementTemplateUseCount(req.params.id);
-      res.json(template);
+      
+      res.json(newFlow);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

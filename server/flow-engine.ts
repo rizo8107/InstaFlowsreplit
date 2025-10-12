@@ -161,7 +161,20 @@ export class FlowEngine {
         if (this.context.variables.sender_id && config.message) {
           console.log(`[FlowEngine] Sending DM to sender ${this.context.variables.sender_id}: ${config.message}`);
           try {
-            const result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.message);
+            let result;
+            // Check if button template is configured
+            if (config.buttons && Array.isArray(config.buttons) && config.buttons.length > 0) {
+              console.log(`[FlowEngine] Sending DM with button template (${config.buttons.length} buttons)`);
+              result = await this.api.sendButtonTemplate(
+                this.context.variables.sender_id,
+                config.message,
+                config.subtitle,
+                config.buttons
+              );
+            } else {
+              // Regular text message
+              result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.message);
+            }
             console.log(`[FlowEngine] DM sent successfully, result:`, result);
             return { success: true, action: "send_dm", sender_id: this.context.variables.sender_id, message: config.message, result };
           } catch (error: any) {
