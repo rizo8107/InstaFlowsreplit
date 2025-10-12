@@ -20,7 +20,7 @@ import {
   contacts
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Instagram Accounts
@@ -68,7 +68,9 @@ export interface IStorage {
   getContact(id: string): Promise<Contact | undefined>;
   getContactsByAccount(accountId: string): Promise<Contact[]>;
   getAllContacts(): Promise<Contact[]>;
+  getContactByInstagramUserId(accountId: string, instagramUserId: string): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
+  upsertContact(accountId: string, instagramUserId: string, username?: string): Promise<Contact>;
   updateContact(id: string, updates: Partial<Contact>): Promise<Contact | undefined>;
   deleteContact(id: string): Promise<boolean>;
 }
@@ -300,6 +302,37 @@ export class DatabaseStorage implements IStorage {
   async deleteContact(id: string): Promise<boolean> {
     const result = await db.delete(contacts).where(eq(contacts.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getContactByInstagramUserId(accountId: string, instagramUserId: string): Promise<Contact | undefined> {
+    const [contact] = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.accountId, accountId),
+          eq(contacts.instagramUserId, instagramUserId)
+        )
+      );
+    return contact || undefined;
+  }
+
+  async upsertContact(accountId: string, instagramUserId: string, username?: string): Promise<Contact> {
+    const existingContact = await this.getContactByInstagramUserId(accountId, instagramUserId);
+    
+    if (existingContact) {
+      if (username && existingContact.username !== username) {
+        const updated = await this.updateContact(existingContact.id, { username });
+        return updated!;
+      }
+      return existingContact;
+    }
+
+    return await this.createContact({
+      accountId,
+      instagramUserId,
+      username: username || instagramUserId,
+    });
   }
 }
 
