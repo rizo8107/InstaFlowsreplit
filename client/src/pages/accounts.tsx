@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Instagram, Trash2, Power, PowerOff, ExternalLink, Webhook, Copy, Check } from "lucide-react";
+import { Plus, Instagram, Trash2, Power, PowerOff, ExternalLink, Webhook, Copy, Check, RefreshCw, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import type { InstagramAccount } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,7 @@ export default function Accounts() {
   const [location] = useLocation();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<any>(null);
 
   // Handle OAuth callback messages
   useEffect(() => {
@@ -135,6 +136,33 @@ export default function Accounts() {
       toast({
         title: "Error",
         description: "Failed to disconnect account.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const testWebhookMutation = useMutation({
+    mutationFn: async () => {
+      setWebhookStatus(null);
+      const response = await fetch("/api/webhook-status");
+      if (!response.ok) throw new Error("Failed to check webhook status");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setWebhookStatus(data);
+      toast({
+        title: "Webhook Status Checked",
+        description: data.configured 
+          ? "Webhooks are properly configured!" 
+          : "Webhook setup incomplete - check details below",
+        variant: data.configured ? "default" : "destructive",
+      });
+    },
+    onError: () => {
+      setWebhookStatus(null);
+      toast({
+        title: "Error",
+        description: "Failed to check webhook status.",
         variant: "destructive",
       });
     },
@@ -323,6 +351,108 @@ export default function Accounts() {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
+          </div>
+
+          {/* Webhook Status Test */}
+          <div className="border-t pt-4 mt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Connection Status</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => testWebhookMutation.mutate()}
+                disabled={testWebhookMutation.isPending}
+                className="gap-2"
+                data-testid="button-test-webhook"
+              >
+                <RefreshCw className={`w-4 h-4 ${testWebhookMutation.isPending ? 'animate-spin' : ''}`} />
+                {testWebhookMutation.isPending ? 'Testing...' : 'Test Connection'}
+              </Button>
+            </div>
+
+            {webhookStatus && (
+              <div className="space-y-3" data-testid="webhook-status-results">
+                {/* Overall Status */}
+                <div 
+                  className={`p-3 rounded-lg border ${
+                    webhookStatus.configured 
+                      ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900' 
+                      : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900'
+                  }`}
+                  data-testid={webhookStatus.configured ? "status-configured" : "status-not-configured"}
+                >
+                  <div className="flex items-start gap-3">
+                    {webhookStatus.configured ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    )}
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium text-foreground" data-testid="text-webhook-status">
+                        {webhookStatus.configured 
+                          ? '✓ Webhooks Configured' 
+                          : 'Webhook Setup Required'}
+                      </p>
+                      <p className="text-xs text-muted-foreground" data-testid="text-webhook-message">
+                        {webhookStatus.message || webhookStatus.note || 'Webhook configuration checked'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Account Subscriptions */}
+                {webhookStatus.accountSubscriptions && webhookStatus.accountSubscriptions.length > 0 && (
+                  <div className="space-y-2" data-testid="account-subscriptions">
+                    <p className="text-xs font-medium text-muted-foreground">Account-Level Subscriptions:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {webhookStatus.accountSubscriptions.map((field: string) => (
+                        <Badge key={field} variant="secondary" className="text-xs" data-testid={`badge-account-${field}`}>
+                          {field}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* App Subscriptions */}
+                {webhookStatus.appSubscriptions && (
+                  <div className="space-y-2" data-testid="app-subscriptions">
+                    <p className="text-xs font-medium text-muted-foreground">App-Level Subscriptions:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {webhookStatus.appSubscriptions.fields?.map((field: string) => (
+                        <Badge key={field} variant="outline" className="text-xs" data-testid={`badge-app-${field}`}>
+                          {field}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Subscriptions Array (fallback) */}
+                {webhookStatus.subscriptions && webhookStatus.subscriptions.length > 0 && (
+                  <div className="space-y-2" data-testid="active-subscriptions">
+                    <p className="text-xs font-medium text-muted-foreground">Active Subscriptions:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {webhookStatus.subscriptions.map((field: string) => (
+                        <Badge key={field} variant="default" className="text-xs" data-testid={`badge-subscription-${field}`}>
+                          {field}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Display */}
+                {webhookStatus.error && (
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900" data-testid="webhook-error">
+                    <div className="flex items-start gap-2">
+                      <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
+                      <p className="text-xs text-red-600 dark:text-red-400" data-testid="text-error-message">{webhookStatus.error}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
