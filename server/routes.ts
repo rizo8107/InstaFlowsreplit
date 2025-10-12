@@ -535,13 +535,11 @@ export function registerRoutes(app: Express, storage: IStorage) {
         let account = await storage.getAccountByInstagramUserId(instagramUserId);
 
         if (!account) {
-          console.log(`\n⚠️  NO ACCOUNT FOUND for Instagram User ID: ${instagramUserId}`);
-          console.log(`   This webhook cannot be processed because the Instagram account is not connected.`);
-          console.log(`   To fix: Connect this Instagram account via OAuth in the Accounts page.`);
-          console.log(`   Webhook will be ignored.\n`);
-          
-          // Do NOT auto-update or mutate any accounts - this causes data corruption
-          // The account must be properly connected via OAuth
+          console.log(`\n⚠️  WEBHOOK FOR UNKNOWN ACCOUNT`);
+          console.log(`   Instagram User ID: ${instagramUserId}`);
+          console.log(`   This account is not connected in your database`);
+          console.log(`   ACTION: Go to Accounts page → Connect Instagram Account via OAuth`);
+          console.log(`   The webhook will be skipped until the account is connected\n`);
           continue;
         }
 

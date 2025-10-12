@@ -230,27 +230,43 @@ export function setupAuth(app: Express) {
         return res.redirect("/accounts?error=profile_fetch_failed");
       }
 
+      console.log("\n📱 Instagram Account Connection Debug:");
+      console.log(`  OAuth igUserId from token: ${igUserId}`);
+      console.log(`  Graph API me.id: ${profileData.id}`);
+      console.log(`  Username: @${profileData.username}`);
+      console.log(`  Account Type: ${profileData.account_type}`);
+      console.log(`\n  ⚠️  Using Graph API ID (${profileData.id}) as this is what webhooks send`);
+
+      // Use the Graph API ID - this should be the Instagram Business Account ID
+      const accountIdToUse = profileData.id;
+
       // Step 4: Check if account already exists and create/update
-      const existingAccount = await storage.getAccountByInstagramUserId(igUserId);
+      const existingAccount = await storage.getAccountByInstagramUserId(accountIdToUse);
       
       if (existingAccount) {
         // Update existing account with new token
+        console.log(`  Updating existing account: ${existingAccount.id}`);
         await storage.updateAccount(existingAccount.id, {
           accessToken: finalToken,
           username: profileData.username,
         });
+        console.log(`  ✅ Account updated`);
       } else {
         // Create new account
+        console.log(`  Creating new account with ID: ${accountIdToUse}`);
         await storage.createAccount({
           userId: req.user!.id,
-          instagramUserId: igUserId,
+          instagramUserId: accountIdToUse,
           username: profileData.username,
           accessToken: finalToken,
         });
+        console.log(`  ✅ New account created`);
       }
 
+      console.log(`\n✅ Account @${profileData.username} saved successfully!\n`);
+
       // Step 5: Automatically subscribe to webhooks (fire-and-forget, non-blocking)
-      webhookService.subscribeToWebhooks(igUserId, finalToken)
+      webhookService.subscribeToWebhooks(accountIdToUse, finalToken)
         .then(async subscribed => {
           if (subscribed) {
             console.log("✅ Webhooks configured successfully for user:", igUserId);
