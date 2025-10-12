@@ -549,6 +549,23 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
             console.log("Saving webhook event:", eventType, "for account:", account.username);
 
+            // Auto-create contact from webhook data
+            const contactUserId = triggerData.from_id || triggerData.sender_id;
+            const contactUsername = triggerData.from_username;
+            
+            if (contactUserId) {
+              try {
+                await storage.upsertContact(
+                  account.id,
+                  contactUserId,
+                  contactUsername
+                );
+                console.log("Contact auto-created/updated:", contactUserId, contactUsername || "(no username)");
+              } catch (error) {
+                console.error("Error auto-creating contact:", error);
+              }
+            }
+
             const webhookEvent = await storage.createWebhookEvent({
               accountId: account.id,
               eventType,
