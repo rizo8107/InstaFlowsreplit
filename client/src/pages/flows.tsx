@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Workflow, Edit, Trash2, Power, PowerOff } from "lucide-react";
-import { Link } from "wouter";
-import type { Flow } from "@shared/schema";
+import { Link, useLocation } from "wouter";
+import type { Flow, InstagramAccount } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,14 +18,39 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 
 export default function Flows() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [deleteFlowId, setDeleteFlowId] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newFlowName, setNewFlowName] = useState("");
+  const [newFlowAccountId, setNewFlowAccountId] = useState("");
 
   const { data: flows, isLoading } = useQuery<Flow[]>({
     queryKey: ["/api/flows"],
+  });
+
+  const { data: accounts } = useQuery<InstagramAccount[]>({
+    queryKey: ["/api/accounts"],
   });
 
   const deleteMutation = useMutation({
@@ -66,6 +91,57 @@ export default function Flows() {
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/flows", {
+        name: newFlowName,
+        description: "",
+        accountId: newFlowAccountId,
+        isActive: false,
+        nodes: [],
+        edges: [],
+      }),
+    onSuccess: async (response) => {
+      const newFlow = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/flows"] });
+      toast({
+        title: "Flow created",
+        description: "Your new flow has been created.",
+      });
+      setCreateDialogOpen(false);
+      setNewFlowName("");
+      setNewFlowAccountId("");
+      navigate(`/flows/${newFlow.id}`);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create flow.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateFlow = () => {
+    if (!newFlowName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a flow name.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!newFlowAccountId) {
+      toast({
+        title: "Error",
+        description: "Please select an Instagram account.",
+        variant: "destructive",
+      });
+      return;
+    }
+    createMutation.mutate();
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -74,12 +150,10 @@ export default function Flows() {
           <h1 className="text-2xl font-bold text-foreground">Flows</h1>
           <p className="text-sm text-muted-foreground">Manage your automation workflows</p>
         </div>
-        <Link href="/flows/new">
-          <Button className="gap-2" data-testid="button-create-flow">
-            <Plus className="w-4 h-4" />
-            Create Flow
-          </Button>
-        </Link>
+        <Button className="gap-2" onClick={() => setCreateDialogOpen(true)} data-testid="button-create-flow">
+          <Plus className="w-4 h-4" />
+          Create Flow
+        </Button>
       </div>
 
       {/* Flows Grid */}
@@ -187,16 +261,98 @@ export default function Flows() {
               <p className="text-sm text-muted-foreground mb-4">
                 Create your first automation workflow to get started
               </p>
-              <Link href="/flows/new">
-                <Button className="gap-2" data-testid="button-create-first-flow">
-                  <Plus className="w-4 h-4" />
-                  Create Flow
-                </Button>
-              </Link>
+              <Button className="gap-2" onClick={() => setCreateDialogOpen(true)} data-testid="button-create-first-flow">
+                <Plus className="w-4 h-4" />
+                Create Flow
+              </Button>
             </div>
           </div>
         </Card>
       )}
+
+      {/* Create Flow Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={(open) => {
+        setCreateDialogOpen(open);
+        if (!open) {
+          setNewFlowName("");
+          setNewFlowAccountId("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Flow</DialogTitle>
+            <DialogDescription>
+              Enter a name for your flow and select the Instagram account to use.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="flow-name">Flow Name</Label>
+              <Input
+                id="flow-name"
+                placeholder="e.g., Auto-reply to comments"
+                value={newFlowName}
+                onChange={(e) => setNewFlowName(e.target.value)}
+                data-testid="input-flow-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="account">Instagram Account</Label>
+              {accounts && accounts.length > 0 ? (
+                <Select value={newFlowAccountId} onValueChange={setNewFlowAccountId}>
+                  <SelectTrigger id="account" data-testid="select-account">
+                    <SelectValue placeholder="Select an account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="rounded-md border border-muted bg-muted/50 p-4 text-sm">
+                  <p className="text-muted-foreground mb-3">
+                    You need to add an Instagram account before creating a flow.
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      setCreateDialogOpen(false);
+                      navigate("/accounts");
+                    }}
+                    data-testid="button-add-account"
+                  >
+                    Add Instagram Account
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateDialogOpen(false);
+                setNewFlowName("");
+                setNewFlowAccountId("");
+              }}
+              data-testid="button-cancel-create"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateFlow}
+              disabled={createMutation.isPending || !newFlowName.trim() || !newFlowAccountId}
+              data-testid="button-confirm-create"
+            >
+              {createMutation.isPending ? "Creating..." : "Create Flow"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
