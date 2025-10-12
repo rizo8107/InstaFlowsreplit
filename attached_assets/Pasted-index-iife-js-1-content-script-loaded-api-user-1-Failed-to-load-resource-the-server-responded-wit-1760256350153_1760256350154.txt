@@ -1,0 +1,74 @@
+index.iife.js:1 content script loaded
+api/user:1   Failed to load resource: the server responded with a status of 401 ()
+api/login:1   Failed to load resource: the server responded with a status of 500 ()
+api/login:1   Failed to load resource: the server responded with a status of 500 ()
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
+index-DmBwm2bJ.css:1   Failed to load resource: the server responded with a status of 500 ()
+index-DSvzaxSR.js:48   POST https://insta-flows-nirmal40.replit.app/api/login 500 (Internal Server Error)
+dt @ index-DSvzaxSR.js:48
+mutationFn @ index-DSvzaxSR.js:394
+fn @ index-DSvzaxSR.js:48
+w @ index-DSvzaxSR.js:48
+start @ index-DSvzaxSR.js:48
+execute @ index-DSvzaxSR.js:48
+await in execute
+mutate @ index-DSvzaxSR.js:48
+w @ index-DSvzaxSR.js:409
+VC @ index-DSvzaxSR.js:37
+BC @ index-DSvzaxSR.js:37
+UC @ index-DSvzaxSR.js:37
+Rg @ index-DSvzaxSR.js:37
+p0 @ index-DSvzaxSR.js:37
+(anonymous) @ index-DSvzaxSR.js:37
+Ap @ index-DSvzaxSR.js:40
+Fx @ index-DSvzaxSR.js:37
+vd @ index-DSvzaxSR.js:37
+sp @ index-DSvzaxSR.js:37
+iE @ index-DSvzaxSR.js:37
+index-DSvzaxSR.js:48   POST https://insta-flows-nirmal40.replit.app/api/login 500 (Internal Server Error)
+dt @ index-DSvzaxSR.js:48
+mutationFn @ index-DSvzaxSR.js:394
+fn @ index-DSvzaxSR.js:48
+w @ index-DSvzaxSR.js:48
+start @ index-DSvzaxSR.js:48
+execute @ index-DSvzaxSR.js:48
+await in execute
+mutate @ index-DSvzaxSR.js:48
+w @ index-DSvzaxSR.js:409
+VC @ index-DSvzaxSR.js:37
+BC @ index-DSvzaxSR.js:37
+UC @ index-DSvzaxSR.js:37
+Rg @ index-DSvzaxSR.js:37
+p0 @ index-DSvzaxSR.js:37
+(anonymous) @ index-DSvzaxSR.js:37
+Ap @ index-DSvzaxSR.js:40
+Fx @ index-DSvzaxSR.js:37
+vd @ index-DSvzaxSR.js:37
+sp @ index-DSvzaxSR.js:37
+iE @ index-DSvzaxSR.js:37
+index-DSvzaxSR.js:48   POST https://insta-flows-nirmal40.replit.app/api/register 500 (Internal Server Error)
+dt @ index-DSvzaxSR.js:48
+mutationFn @ index-DSvzaxSR.js:394
+fn @ index-DSvzaxSR.js:48
+w @ index-DSvzaxSR.js:48
+start @ index-DSvzaxSR.js:48
+execute @ index-DSvzaxSR.js:48
+await in execute
+mutate @ index-DSvzaxSR.js:48
+w @ index-DSvzaxSR.js:409
+VC @ index-DSvzaxSR.js:37
+BC @ index-DSvzaxSR.js:37
+UC @ index-DSvzaxSR.js:37
+Rg @ index-DSvzaxSR.js:37
+p0 @ index-DSvzaxSR.js:37
+(anonymous) @ index-DSvzaxSR.js:37
+Ap @ index-DSvzaxSR.js:40
+Fx @ index-DSvzaxSR.js:37
+vd @ index-DSvzaxSR.js:37
+sp @ index-DSvzaxSR.js:37
+iE @ index-DSvzaxSR.js:37
+index-DSvzaxSR.js:48   POST https://insta-flows-nirmal40.replit.app/api/login 500 (Internal Server 
