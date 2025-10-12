@@ -179,11 +179,15 @@ export function registerRoutes(app: Express, storage: IStorage) {
           errorMessage: result.error || null,
         });
 
+        const updatedExecution = await storage.getExecution(execution.id);
+
         res.json({
           success: result.success,
           executionId: execution.id,
           executionPath: result.executionPath,
+          nodeResults: result.nodeResults,
           error: result.error,
+          execution: updatedExecution,
         });
       } catch (error: any) {
         await storage.updateExecution(execution.id, {

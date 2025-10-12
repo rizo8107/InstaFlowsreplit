@@ -2,10 +2,19 @@ import type { Flow } from "@shared/schema";
 import { InstagramAPI } from "./instagram-api";
 import { storage } from "./storage";
 
+interface NodeExecutionResult {
+  nodeId: string;
+  nodeType: string;
+  success: boolean;
+  output?: any;
+  error?: string;
+}
+
 interface ExecutionContext {
   triggerData: any;
   variables: Record<string, any>;
   executionPath: string[];
+  nodeResults: NodeExecutionResult[];
 }
 
 export class FlowEngine {
@@ -20,6 +29,7 @@ export class FlowEngine {
       triggerData,
       variables: this.extractVariables(triggerData),
       executionPath: [],
+      nodeResults: [],
     };
   }
 
@@ -112,7 +122,7 @@ export class FlowEngine {
     }
   }
 
-  private async executeAction(actionType: string, actionConfig: any): Promise<void> {
+  private async executeAction(actionType: string, actionConfig: any): Promise<any> {
     const config = { ...actionConfig };
 
     // Replace variables in config
@@ -133,32 +143,33 @@ export class FlowEngine {
         if (this.context.variables.comment_id && config.message) {
           console.log(`[FlowEngine] Replying to comment ${this.context.variables.comment_id}: ${config.message}`);
           try {
-            await this.api.replyToComment(this.context.variables.comment_id, config.message);
+            const result = await this.api.replyToComment(this.context.variables.comment_id, config.message);
+            return { success: true, action: "reply_comment", comment_id: this.context.variables.comment_id, message: config.message, result };
           } catch (error: any) {
             console.error(`[FlowEngine] Failed to reply to comment:`, error.response?.data || error.message);
-            throw error;
+            throw new Error(`Failed to reply to comment: ${error.response?.data?.error?.message || error.message}`);
           }
         } else {
-          console.log(`[FlowEngine] Missing comment_id or message for reply_comment action`);
+          const errorMsg = "Missing comment_id or message for reply_comment action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
 
       case "send_dm":
         if (this.context.variables.user_id && config.message) {
           console.log(`[FlowEngine] Sending DM to ${this.context.variables.user_id}: ${config.message}`);
           try {
-            await this.api.sendDirectMessage(this.context.variables.user_id, config.message);
+            const result = await this.api.sendDirectMessage(this.context.variables.user_id, config.message);
+            return { success: true, action: "send_dm", user_id: this.context.variables.user_id, message: config.message, result };
           } catch (error: any) {
             console.error(`[FlowEngine] Failed to send DM:`, error.response?.data || error.message);
-            throw error;
+            throw new Error(`Failed to send DM: ${error.response?.data?.error?.message || error.message}`);
           }
         } else {
-          console.log(`[FlowEngine] Missing user_id or message for send_dm action`, {
-            user_id: this.context.variables.user_id,
-            message: config.message,
-          });
+          const errorMsg = `Missing user_id or message for send_dm action (user_id: ${this.context.variables.user_id})`;
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
 
       case "delete_comment":
         if (this.context.variables.comment_id) {
@@ -219,30 +230,72 @@ export class FlowEngine {
   private async executeNode(node: any): Promise<string | null> {
     this.context.executionPath.push(node.id);
 
-    switch (node.type) {
-      case "trigger":
-        // Trigger is the starting point, continue to next
-        return node.id;
+    try {
+      switch (node.type) {
+        case "trigger":
+          // Trigger is the starting point, continue to next
+          this.context.nodeResults.push({
+            nodeId: node.id,
+            nodeType: "trigger",
+            success: true,
+            output: { triggerType: node.data.triggerType, triggerData: this.context.triggerData },
+          });
+          return node.id;
 
-      case "condition":
-        const conditionsMet = this.evaluateConditions(
-          node.data.conditions,
-          node.data.logicOperator
-        );
-        return conditionsMet ? `${node.id}-true` : `${node.id}-false`;
+        case "condition":
+          const conditionsMet = this.evaluateConditions(
+            node.data.conditions,
+            node.data.logicOperator
+          );
+          this.context.nodeResults.push({
+            nodeId: node.id,
+            nodeType: "condition",
+            success: true,
+            output: { 
+              conditionsMet, 
+              conditions: node.data.conditions,
+              logicOperator: node.data.logicOperator,
+              variables: this.context.variables,
+            },
+          });
+          return conditionsMet ? `${node.id}-true` : `${node.id}-false`;
 
-      case "action":
-        if (node.data.actionType && node.data.actionConfig) {
-          await this.executeAction(node.data.actionType, node.data.actionConfig);
-        }
-        return node.id;
+        case "action":
+          if (node.data.actionType && node.data.actionConfig) {
+            const actionResult = await this.executeAction(node.data.actionType, node.data.actionConfig);
+            this.context.nodeResults.push({
+              nodeId: node.id,
+              nodeType: "action",
+              success: true,
+              output: { 
+                actionType: node.data.actionType, 
+                config: node.data.actionConfig,
+                result: actionResult,
+              },
+            });
+          }
+          return node.id;
 
-      default:
-        return node.id;
+        default:
+          this.context.nodeResults.push({
+            nodeId: node.id,
+            nodeType: node.type || "unknown",
+            success: true,
+          });
+          return node.id;
+      }
+    } catch (error: any) {
+      this.context.nodeResults.push({
+        nodeId: node.id,
+        nodeType: node.type,
+        success: false,
+        error: error.message,
+      });
+      throw error;
     }
   }
 
-  async execute(): Promise<{ success: boolean; executionPath: string[]; error?: string }> {
+  async execute(): Promise<{ success: boolean; executionPath: string[]; nodeResults: NodeExecutionResult[]; error?: string }> {
     try {
       // Find trigger node
       const triggerNode = this.flow.nodes.find(n => n.type === "trigger");
@@ -272,11 +325,13 @@ export class FlowEngine {
       return {
         success: true,
         executionPath: this.context.executionPath,
+        nodeResults: this.context.nodeResults,
       };
     } catch (error: any) {
       return {
         success: false,
         executionPath: this.context.executionPath,
+        nodeResults: this.context.nodeResults,
         error: error.message,
       };
     }
