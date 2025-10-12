@@ -249,21 +249,19 @@ export function setupAuth(app: Express) {
         });
       }
 
-      // Step 5: Automatically subscribe to webhooks (if not already configured)
-      try {
-        console.log("Checking/subscribing to Instagram webhooks...");
-        const subscribed = await webhookService.subscribeToWebhooks(igUserId, finalToken);
-        
-        if (subscribed) {
-          console.log("✅ Webhooks configured successfully");
-        } else {
-          console.log("⚠️ Webhook subscription needs manual setup");
-          console.log(webhookService.getSetupInstructions());
-        }
-      } catch (webhookError) {
-        console.error("Webhook subscription error (non-blocking):", webhookError);
-        // Don't fail the OAuth flow if webhook subscription fails
-      }
+      // Step 5: Automatically subscribe to webhooks (fire-and-forget, non-blocking)
+      webhookService.subscribeToWebhooks(igUserId, finalToken)
+        .then(subscribed => {
+          if (subscribed) {
+            console.log("✅ Webhooks configured successfully for user:", igUserId);
+          } else {
+            console.log("⚠️ Webhook subscription needs manual setup for user:", igUserId);
+            console.log(webhookService.getSetupInstructions());
+          }
+        })
+        .catch(webhookError => {
+          console.error("Webhook subscription error (non-blocking):", webhookError);
+        });
 
       res.redirect("/accounts?success=true");
     } catch (error) {
