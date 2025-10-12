@@ -23,6 +23,16 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Auto-Contact Creation from Webhooks (October 12, 2025)**: Contacts now auto-save from webhook events
+  - **Automatic Storage**: Webhook events automatically create/update contacts
+    - Comment webhooks: Saves from_id (user ID) and from_username
+    - DM webhooks: Saves sender_id (user ID)
+    - Mention/Story webhooks: Saves from_id and from_username
+  - **Duplicate Prevention**: Upsert logic prevents duplicate contacts
+    - Checks accountId + instagramUserId combination
+    - Updates username if it changes
+  - **Storage Methods**: Added getContactByInstagramUserId and upsertContact to storage layer
+
 - **Contacts Management & Enhanced Node Palette (October 12, 2025)**: Added contacts page and improved node palette
   - **Contacts Page**: New page to store Instagram user contacts
     - Store user ID and username for each contact
