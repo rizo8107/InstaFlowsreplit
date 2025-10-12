@@ -9,6 +9,8 @@ export const instagramAccounts = pgTable("instagram_accounts", {
   username: text("username").notNull(),
   instagramUserId: text("instagram_user_id").notNull().unique(),
   accessToken: text("access_token").notNull(),
+  pageId: text("page_id"), // Facebook Page ID for Private Replies
+  pageAccessToken: text("page_access_token"), // Facebook Page token for Private Replies
   profilePicture: text("profile_picture"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),

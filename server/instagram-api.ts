@@ -29,10 +29,14 @@ export interface InstagramMessage {
 export class InstagramAPI {
   private accessToken: string;
   private instagramUserId: string;
+  private pageId?: string;
+  private pageAccessToken?: string;
 
-  constructor(accessToken: string, instagramUserId?: string) {
+  constructor(accessToken: string, instagramUserId?: string, pageId?: string, pageAccessToken?: string) {
     this.accessToken = accessToken;
     this.instagramUserId = instagramUserId || "";
+    this.pageId = pageId;
+    this.pageAccessToken = pageAccessToken;
   }
 
   // Comments
@@ -256,6 +260,50 @@ export class InstagramAPI {
       console.error(`[InstagramAPI] Full error:`, error);
       
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
+    }
+  }
+
+  // Private Reply (Messenger Platform - used for comment-triggered DMs)
+  async sendPrivateReply(commentId: string, message: string): Promise<any> {
+    try {
+      if (!this.pageId || !this.pageAccessToken) {
+        throw new Error("Private Reply requires Facebook Page ID and Page Access Token. Please configure these in your account settings.");
+      }
+
+      const endpoint = `https://graph.facebook.com/v24.0/${this.pageId}/messages`;
+      
+      const requestBody = {
+        recipient: { comment_id: commentId },
+        message: { text: message },
+        messaging_type: "RESPONSE"
+      };
+      
+      console.log(`[InstagramAPI] Sending Private Reply from comment ${commentId}`);
+      console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
+      
+      const response = await axios.post(
+        endpoint,
+        requestBody,
+        {
+          params: {
+            access_token: this.pageAccessToken,
+          },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      console.log(`[InstagramAPI] Private Reply sent successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error sending Private Reply:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Private Reply Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
 
