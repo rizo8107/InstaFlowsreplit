@@ -22,13 +22,24 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
-- **Instagram DM API Fix (October 12, 2025)**: Fixed DM sending to match Instagram Graph API v24.0 requirements
-  - **CRITICAL FIX**: Updated DM endpoint from `/me/messages` to `/{conversation_id}/messages`
-  - Changed request format from `{recipient: {id}, message: {text}}` to `{message: {text}}`
-  - Added `conversation_id` extraction from DM webhook events in flow engine
-  - Updated both `send_dm` and `send_link` actions to use conversation_id
-  - Added Content-Type: application/json header to DM requests
-  - Enhanced error logging to show full Instagram API error responses
+- **Complete Instagram Graph API v24.0 Compliance (October 12, 2025)**: Fixed all action nodes to match Instagram Graph API v24.0
+  - **Updated API Base URL**: Changed from `graph.instagram.com` to `graph.instagram.com/v24.0`
+  - **DM Actions Fixed**: 
+    - Updated endpoint from `/me/messages` to `/{conversation_id}/messages`
+    - Changed request format from `{recipient: {id}, message: {text}}` to `{message: {text}}`
+    - Added `conversation_id` extraction from DM webhook events
+    - Both `send_dm` and `send_link` now use conversation_id
+  - **All Comment Actions Enhanced**:
+    - Reply to Comment: Proper error handling and result tracking
+    - Delete Comment: Full error details and logging
+    - Hide Comment: Complete error handling
+    - Like Comment: Detailed result tracking
+  - **Other Actions Improved**:
+    - API Call: Added result tracking and error handling
+    - Delay: Added logging and result tracking
+  - **Reel Detection**: Added `isReel()` helper method to check if media is a Reel
+  - **Media Fields**: Added `media_product_type` to all media queries for Reel detection
+  - **Error Handling**: All actions now throw detailed errors with full Instagram API responses
 
 - **Database Migration (October 11, 2025)**: Migrated from in-memory storage to PostgreSQL
   - Implemented DatabaseStorage class with full Drizzle ORM integration

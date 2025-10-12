@@ -176,21 +176,54 @@ export class FlowEngine {
 
       case "delete_comment":
         if (this.context.variables.comment_id) {
-          await this.api.deleteComment(this.context.variables.comment_id);
+          console.log(`[FlowEngine] Deleting comment ${this.context.variables.comment_id}`);
+          try {
+            const result = await this.api.deleteComment(this.context.variables.comment_id);
+            console.log(`[FlowEngine] Comment deleted successfully, result:`, result);
+            return { success: true, action: "delete_comment", comment_id: this.context.variables.comment_id, result };
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to delete comment:`, error);
+            throw error;
+          }
+        } else {
+          const errorMsg = "Missing comment_id for delete_comment action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
 
       case "hide_comment":
         if (this.context.variables.comment_id) {
-          await this.api.hideComment(this.context.variables.comment_id);
+          console.log(`[FlowEngine] Hiding comment ${this.context.variables.comment_id}`);
+          try {
+            const result = await this.api.hideComment(this.context.variables.comment_id);
+            console.log(`[FlowEngine] Comment hidden successfully, result:`, result);
+            return { success: true, action: "hide_comment", comment_id: this.context.variables.comment_id, result };
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to hide comment:`, error);
+            throw error;
+          }
+        } else {
+          const errorMsg = "Missing comment_id for hide_comment action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
 
       case "like_comment":
         if (this.context.variables.comment_id) {
-          await this.api.likeComment(this.context.variables.comment_id);
+          console.log(`[FlowEngine] Liking comment ${this.context.variables.comment_id}`);
+          try {
+            const result = await this.api.likeComment(this.context.variables.comment_id);
+            console.log(`[FlowEngine] Comment liked successfully, result:`, result);
+            return { success: true, action: "like_comment", comment_id: this.context.variables.comment_id, result };
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to like comment:`, error);
+            throw error;
+          }
+        } else {
+          const errorMsg = "Missing comment_id for like_comment action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
 
       case "send_link":
         if (this.context.variables.conversation_id && config.url) {
@@ -211,21 +244,39 @@ export class FlowEngine {
 
       case "api_call":
         if (config.endpoint) {
-          const axios = (await import("axios")).default;
-          const method = (config.method || "POST").toLowerCase();
-          await axios({
-            method,
-            url: config.endpoint,
-            data: this.context.triggerData,
-          });
+          console.log(`[FlowEngine] Calling API endpoint ${config.endpoint}`);
+          try {
+            const axios = (await import("axios")).default;
+            const method = (config.method || "POST").toLowerCase();
+            const result = await axios({
+              method,
+              url: config.endpoint,
+              data: this.context.triggerData,
+            });
+            console.log(`[FlowEngine] API call successful, result:`, result.data);
+            return { success: true, action: "api_call", endpoint: config.endpoint, method, result: result.data };
+          } catch (error: any) {
+            console.error(`[FlowEngine] API call failed:`, error);
+            throw error;
+          }
+        } else {
+          const errorMsg = "Missing endpoint for api_call action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
 
       case "delay":
         if (config.seconds) {
-          await new Promise(resolve => setTimeout(resolve, parseInt(config.seconds) * 1000));
+          const seconds = parseInt(config.seconds);
+          console.log(`[FlowEngine] Delaying for ${seconds} seconds`);
+          await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+          console.log(`[FlowEngine] Delay completed`);
+          return { success: true, action: "delay", seconds };
+        } else {
+          const errorMsg = "Missing seconds for delay action";
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
         }
-        break;
     }
   }
 

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const GRAPH_API_BASE = "https://graph.instagram.com";
+const GRAPH_API_BASE = "https://graph.instagram.com/v24.0";
 
 export interface InstagramComment {
   id: string;
@@ -78,22 +78,34 @@ export class InstagramAPI {
     }
   }
 
-  async deleteComment(commentId: string): Promise<boolean> {
+  async deleteComment(commentId: string): Promise<any> {
     try {
-      await axios.delete(`${GRAPH_API_BASE}/${commentId}`, {
+      console.log(`[InstagramAPI] Deleting comment ${commentId}`);
+      
+      const response = await axios.delete(`${GRAPH_API_BASE}/${commentId}`, {
         params: {
           access_token: this.accessToken,
         },
       });
-      return true;
-    } catch (error) {
-      return false;
+      console.log(`[InstagramAPI] Comment deleted successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error deleting comment:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
 
-  async hideComment(commentId: string): Promise<boolean> {
+  async hideComment(commentId: string): Promise<any> {
     try {
-      await axios.post(
+      console.log(`[InstagramAPI] Hiding comment ${commentId}`);
+      
+      const response = await axios.post(
         `${GRAPH_API_BASE}/${commentId}`,
         {
           hide: true,
@@ -104,15 +116,25 @@ export class InstagramAPI {
           },
         }
       );
-      return true;
-    } catch (error) {
-      return false;
+      console.log(`[InstagramAPI] Comment hidden successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error hiding comment:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
 
-  async likeComment(commentId: string): Promise<boolean> {
+  async likeComment(commentId: string): Promise<any> {
     try {
-      await axios.post(
+      console.log(`[InstagramAPI] Liking comment ${commentId}`);
+      
+      const response = await axios.post(
         `${GRAPH_API_BASE}/${commentId}/likes`,
         {},
         {
@@ -121,9 +143,17 @@ export class InstagramAPI {
           },
         }
       );
-      return true;
-    } catch (error) {
-      return false;
+      console.log(`[InstagramAPI] Comment liked successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error liking comment:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
 
@@ -186,11 +216,23 @@ export class InstagramAPI {
       {
         params: {
           access_token: this.accessToken,
-          fields: "id,caption,media_type,media_url,permalink,timestamp,username",
+          fields: "id,caption,media_type,media_product_type,media_url,permalink,timestamp,username",
         },
       }
     );
     return response.data;
+  }
+
+  async isReel(mediaId: string): Promise<boolean> {
+    try {
+      const media = await this.getMedia(mediaId);
+      // Reels are identified by media_product_type = "REELS" or media_type = "VIDEO" with product type REELS
+      return media.media_product_type === 'REELS' || 
+             (media.media_type === 'VIDEO' && media.media_product_type === 'REELS');
+    } catch (error) {
+      console.error(`[InstagramAPI] Error checking if media is Reel:`, error);
+      return false;
+    }
   }
 
   async getRecentMedia(limit: number = 10): Promise<any> {
@@ -199,7 +241,7 @@ export class InstagramAPI {
       {
         params: {
           access_token: this.accessToken,
-          fields: "id,caption,media_type,media_url,permalink,timestamp,username",
+          fields: "id,caption,media_type,media_product_type,media_url,permalink,timestamp,username",
           limit,
         },
       }
