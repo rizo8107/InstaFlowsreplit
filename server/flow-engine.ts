@@ -368,8 +368,8 @@ export class FlowEngine {
           return conditionsMet ? `${node.id}-true` : `${node.id}-false`;
 
         case "action":
-          if (node.data.actionType && node.data.actionConfig) {
-            const actionResult = await this.executeAction(node.data.actionType, node.data.actionConfig);
+          if (node.data.actionType) {
+            const actionResult = await this.executeAction(node.data.actionType, node.data.actionConfig || {});
             this.context.nodeResults.push({
               nodeId: node.id,
               nodeType: "action",

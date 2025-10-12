@@ -6,10 +6,11 @@ A comprehensive web-based Instagram automation platform that enables users to cr
 ## Purpose
 The platform connects multiple Instagram accounts via Graph API tokens and provides a visual flow builder with:
 - Condition nodes (if/else logic with AND/OR operators)
-- Action nodes (reply, message, delete, hide, like, send links, API calls, delays)
+- Action nodes (reply, message, delete, hide, like, send links, API calls, delays, set variables, stop flow)
 - Variable support for dynamic messaging
 - Real-time webhook processing
 - Comprehensive activity logging
+- Edge deletion for easy flow modification
 
 ## Current State
 The MVP is complete with:
@@ -22,6 +23,21 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Additional Node Types & Edge Deletion (October 12, 2025)**: Enhanced flow builder with new capabilities
+  - **Edge Deletion**: Added ability to delete connections between nodes
+    - Custom edge component with hover-to-reveal delete button (X icon)
+    - Keyboard deletion support (Delete key)
+    - Edges are now focusable and updatable for better UX
+    - Uses smooth step path style for consistent visual appearance
+  - **New Action Types**:
+    - **Set Variable**: Store custom values in variables for use in subsequent nodes
+      - Configure variable name and value (supports variable substitution)
+      - Variables accessible in all downstream nodes
+    - **Stop Flow**: Immediately halt flow execution
+      - No further nodes processed after stop_flow action
+      - Useful for conditional early termination
+  - **Node Deletion**: All nodes now have hover-to-reveal delete buttons with red destructive styling
+
 - **Comment Flow DM Actions Fixed (October 12, 2025)**: Fixed DM actions for comment-triggered flows
   - **sender_id Mapping**: Comment events map `from_id` to `sender_id` for send_dm actions
   - **Unified DM Approach**: All DM actions use `sender_id` with Instagram Graph API (no Private Reply complexity)

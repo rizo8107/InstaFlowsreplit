@@ -156,7 +156,7 @@ export default function FlowBuilder() {
     (params: Connection) => {
       const edge = {
         ...params,
-        type: "smoothstep",
+        type: "default",
         animated: true,
         markerEnd: {
           type: MarkerType.ArrowClosed,
