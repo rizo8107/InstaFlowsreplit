@@ -394,6 +394,20 @@ export function registerRoutes(app: Express, storage: IStorage) {
             console.log("Saving DM webhook event for account:", account.username);
             console.log("DM trigger data:", triggerData);
 
+            // Auto-create contact from DM webhook
+            if (triggerData.sender_id) {
+              try {
+                await storage.upsertContact(
+                  account.id,
+                  triggerData.sender_id,
+                  undefined // DM webhooks don't include username
+                );
+                console.log("Contact auto-created/updated for sender:", triggerData.sender_id);
+              } catch (error) {
+                console.error("Error auto-creating contact:", error);
+              }
+            }
+
             const webhookEvent = await storage.createWebhookEvent({
               accountId: account.id,
               eventType: "dm_received",
