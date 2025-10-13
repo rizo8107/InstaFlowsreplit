@@ -23,6 +23,38 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Media-Specific Conditions & Display (October 13, 2025)**: Added media filtering and visual display
+  - **Media Details Fetch**: Webhook handler now fetches full media details (caption, thumbnail, permalink, type)
+  - **Reel Detection**: Automatically detects reels via permalink pattern (`/reel/`)
+  - **New Condition Fields**: Added `media_caption` and `is_reel` condition fields for filtering
+  - **Visual Media Display**: Activity page now shows media thumbnails and captions
+    - Clickable thumbnails linking to Instagram permalink
+    - Reel badge for video content
+    - Caption display with truncation
+    - Available in both executions and webhook events tabs
+  - **API Enhancement**: Added `getMedia()` method to fetch media details via Instagram Graph API
+
+- **Webhook Setup & Legal Pages (October 13, 2025)**: Enhanced setup guide and compliance
+  - **Webhook Token**: Default verify token set to "zenthra" (configurable via environment)
+  - **Terms & Privacy Pages**: Added complete legal documentation at `/terms` and `/privacy`
+  - **Enhanced Setup Guide**: Accounts page now includes:
+    - Copy-paste webhook URL and verify token
+    - Step-by-step Meta for Developers setup instructions
+    - Privacy policy and terms URLs for Meta app configuration
+    - Direct links to required resources
+
+- **Template System Enhanced (October 13, 2025)**: Expanded template library
+  - **12 Professional Templates**: Up from 5 original templates
+  - **New Templates Added**:
+    - Lead Generation - Comment to DM
+    - FAQ Auto-Responder
+    - Giveaway Entry Manager
+    - Customer Support Triage
+    - Influencer Collaboration Response
+    - Negative Comment Alert & Hide
+    - Product Launch Hype Builder
+  - **Fixed Template Creation**: Proper JSON parsing and dialog state reset
+
 - **Auto-Contact Creation from Webhooks (October 12, 2025)**: Contacts now auto-save from webhook events
   - **Automatic Storage**: Webhook events automatically create/update contacts
     - Comment webhooks: Saves from_id (user ID) and from_username

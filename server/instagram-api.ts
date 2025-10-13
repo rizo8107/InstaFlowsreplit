@@ -26,6 +26,17 @@ export interface InstagramMessage {
   created_time: string;
 }
 
+export interface InstagramMedia {
+  id: string;
+  caption?: string;
+  media_type: string;
+  media_url?: string;
+  permalink?: string;
+  thumbnail_url?: string;
+  timestamp?: string;
+  username?: string;
+}
+
 export class InstagramAPI {
   private accessToken: string;
   private instagramUserId: string;
@@ -128,6 +139,30 @@ export class InstagramAPI {
       const errorDetails = JSON.stringify(errorData || error.message);
       
       console.error(`[InstagramAPI] Error hiding comment:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
+    }
+  }
+
+  async getMedia(mediaId: string): Promise<InstagramMedia> {
+    try {
+      console.log(`[InstagramAPI] Fetching media ${mediaId}`);
+      
+      const response = await axios.get(`${GRAPH_API_BASE}/${mediaId}`, {
+        params: {
+          access_token: this.accessToken,
+          fields: "id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username",
+        },
+      });
+      console.log(`[InstagramAPI] Media fetched successfully:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error fetching media:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
       
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);

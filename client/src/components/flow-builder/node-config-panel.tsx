@@ -169,6 +169,8 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                             <SelectItem value="comment_id">Comment ID</SelectItem>
                             <SelectItem value="message_id">Message ID</SelectItem>
                             <SelectItem value="media_id">Media ID</SelectItem>
+                            <SelectItem value="media_caption">Media Caption</SelectItem>
+                            <SelectItem value="is_reel">Is Reel (true/false)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

@@ -602,6 +602,22 @@ export function registerRoutes(app: Express, storage: IStorage) {
                   media_id: value.media?.id,
                   media_type: value.media?.media_product_type,
                 };
+                
+                // Fetch media details if media_id is available
+                if (value.media?.id) {
+                  try {
+                    const api = new InstagramAPI(account.accessToken, account.instagramUserId);
+                    const mediaDetails = await api.getMedia(value.media.id);
+                    triggerData.media_caption = mediaDetails.caption;
+                    triggerData.media_thumbnail = mediaDetails.thumbnail_url;
+                    triggerData.media_permalink = mediaDetails.permalink;
+                    triggerData.media_url = mediaDetails.media_url;
+                    triggerData.is_reel = mediaDetails.permalink?.includes('/reel/') || false;
+                    console.log(`Media details fetched: ${mediaDetails.media_type}, isReel: ${triggerData.is_reel}`);
+                  } catch (error) {
+                    console.error("Error fetching media details:", error);
+                  }
+                }
                 break;
               case "messages":
                 eventType = "dm_received";

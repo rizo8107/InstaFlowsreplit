@@ -189,8 +189,41 @@ export default function ActivityPage() {
                       </Badge>
                     </div>
                   </CardHeader>
-                  {(execution.executionPath || execution.errorMessage) && (
-                    <CardContent className="p-4 pt-0 space-y-2">
+                  {(execution.executionPath || execution.errorMessage || execution.triggerData?.media_thumbnail) && (
+                    <CardContent className="p-4 pt-0 space-y-3">
+                      {/* Media Display */}
+                      {execution.triggerData?.media_thumbnail && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">Media:</p>
+                          <div className="flex gap-3">
+                            <a 
+                              href={execution.triggerData.media_permalink || '#'} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="shrink-0"
+                            >
+                              <img 
+                                src={execution.triggerData.media_thumbnail} 
+                                alt="Media thumbnail" 
+                                className="w-20 h-20 object-cover rounded border hover:opacity-80 transition-opacity"
+                              />
+                            </a>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              {execution.triggerData.is_reel && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Reel
+                                </Badge>
+                              )}
+                              {execution.triggerData.media_caption && (
+                                <p className="text-xs text-muted-foreground line-clamp-3">
+                                  {execution.triggerData.media_caption}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       {execution.executionPath && execution.executionPath.length > 0 && (
                         <div className="text-xs">
                           <p className="text-muted-foreground mb-1">Execution Path:</p>
@@ -289,7 +322,40 @@ export default function ActivityPage() {
                     </div>
                   </CardHeader>
                   {event.payload && (
-                    <CardContent className="p-4 pt-0">
+                    <CardContent className="p-4 pt-0 space-y-3">
+                      {/* Media Display */}
+                      {event.payload.media_thumbnail && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">Media:</p>
+                          <div className="flex gap-3">
+                            <a 
+                              href={event.payload.media_permalink || '#'} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="shrink-0"
+                            >
+                              <img 
+                                src={event.payload.media_thumbnail} 
+                                alt="Media thumbnail" 
+                                className="w-20 h-20 object-cover rounded border hover:opacity-80 transition-opacity"
+                              />
+                            </a>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              {event.payload.is_reel && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Reel
+                                </Badge>
+                              )}
+                              {event.payload.media_caption && (
+                                <p className="text-xs text-muted-foreground line-clamp-3">
+                                  {event.payload.media_caption}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="text-xs">
                         <p className="text-muted-foreground mb-1">Payload:</p>
                         <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
