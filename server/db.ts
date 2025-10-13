@@ -1,10 +1,7 @@
 import 'dotenv/config';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -12,5 +9,13 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+const connectionString = process.env.DATABASE_URL!;
+// Respect sslmode in the URL for pg client
+const ssl = connectionString.includes('sslmode=disable')
+  ? false
+  : connectionString.includes('sslmode=require')
+    ? { rejectUnauthorized: false }
+    : undefined;
+
+export const pool = new Pool({ connectionString, ssl });
+export const db = drizzle(pool, { schema });
