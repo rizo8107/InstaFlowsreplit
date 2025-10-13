@@ -18,6 +18,8 @@ import Templates from "@/pages/templates";
 import WebhookSetup from "@/pages/webhook-setup";
 import Contacts from "@/pages/contacts";
 import AuthPage from "@/pages/auth";
+import Terms from "@/pages/terms";
+import Privacy from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -78,6 +80,12 @@ function Router() {
         <ProtectedRoute>
           <Contacts />
         </ProtectedRoute>
+      </Route>
+      <Route path="/terms">
+        <Terms />
+      </Route>
+      <Route path="/privacy">
+        <Privacy />
       </Route>
       <Route component={NotFound} />
     </Switch>

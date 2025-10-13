@@ -411,7 +411,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
-    const verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+    const verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || "zenthra";
 
     if (mode === "subscribe" && token === verifyToken) {
       console.log("Webhook verified");

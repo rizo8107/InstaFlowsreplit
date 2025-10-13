@@ -222,33 +222,98 @@ export default function Accounts() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label>Webhook Verify Token</Label>
+            <div className="flex gap-2">
+              <Input
+                value="zenthra"
+                readOnly
+                className="font-mono text-sm"
+                data-testid="input-webhook-token"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText("zenthra");
+                  toast({
+                    title: "Copied!",
+                    description: "Verify token copied to clipboard",
+                  });
+                }}
+                data-testid="button-copy-token"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use this token when configuring webhooks in Meta for Developers
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Setup Steps:</h4>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                 <li>Deploy your app (click Publish button)</li>
                 <li>Copy the webhook URL above</li>
-                <li>Go to Meta for Developers console</li>
-                <li>Add webhook with verification token</li>
-                <li>Subscribe to events (comments, messages, etc.)</li>
+                <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Meta for Developers</a></li>
+                <li>Navigate to your app → Products → Webhooks</li>
+                <li>Add webhook callback URL (paste URL above)</li>
+                <li>Enter verify token: <code className="text-xs bg-muted px-1 py-0.5 rounded">zenthra</code></li>
+                <li>Subscribe to events: comments, messages, mentions</li>
+                <li>Set app privacy policy & terms URLs (see below)</li>
               </ol>
             </div>
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Webhook Events:</h4>
-              <div className="flex flex-wrap gap-2">
+              <h4 className="text-sm font-medium">Required for Meta App:</h4>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div>
+                  <span className="font-medium text-foreground">Privacy Policy:</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      value={`${window.location.origin}/privacy`}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/privacy`);
+                        toast({ title: "Copied!", description: "Privacy policy URL copied" });
+                      }}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Terms of Service:</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      value={`${window.location.origin}/terms`}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/terms`);
+                        toast({ title: "Copied!", description: "Terms URL copied" });
+                      }}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
                 <Badge variant="outline">Comments</Badge>
                 <Badge variant="outline">Messages</Badge>
                 <Badge variant="outline">Mentions</Badge>
-                <Badge variant="outline">Story Replies</Badge>
               </div>
-              <a
-                href="/webhook-setup"
-                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                data-testid="link-webhook-guide"
-              >
-                View detailed setup guide
-                <ExternalLink className="w-3 h-3" />
-              </a>
             </div>
           </div>
         </CardContent>
