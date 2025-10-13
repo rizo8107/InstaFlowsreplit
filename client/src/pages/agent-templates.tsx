@@ -21,10 +21,8 @@ export default function AgentTemplatesPage() {
 
   const createFromTemplate = useMutation({
     mutationFn: async (templateId: string) => {
-      return apiRequest(`/api/agents/from-template/${templateId}`, {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
+      const response = await apiRequest("POST", `/api/agents/from-template/${templateId}`, {});
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
