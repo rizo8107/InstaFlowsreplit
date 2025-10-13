@@ -49,10 +49,8 @@ export default function AgentsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: AgentFormValues) => {
-      return await apiRequest("/api/agents", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("POST", "/api/agents", data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
@@ -73,9 +71,8 @@ export default function AgentsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/agents/${id}`, {
-        method: "DELETE",
-      });
+      const response = await apiRequest("DELETE", `/api/agents/${id}`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });

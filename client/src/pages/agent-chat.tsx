@@ -41,10 +41,10 @@ export default function AgentChatPage() {
 
   const createConversationMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/agents/${agentId}/conversations`, {
-        method: "POST",
-        body: JSON.stringify({ title: `Conversation ${conversations.length + 1}` }),
+      const response = await apiRequest("POST", `/api/agents/${agentId}/conversations`, { 
+        title: `Conversation ${conversations.length + 1}` 
       });
+      return await response.json();
     },
     onSuccess: (data: Conversation) => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents", agentId, "conversations"] });
@@ -58,9 +58,8 @@ export default function AgentChatPage() {
 
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
-      return await apiRequest(`/api/conversations/${conversationId}`, {
-        method: "DELETE",
-      });
+      const response = await apiRequest("DELETE", `/api/conversations/${conversationId}`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents", agentId, "conversations"] });
@@ -74,10 +73,8 @@ export default function AgentChatPage() {
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
       if (!selectedConversation) throw new Error("No conversation selected");
-      return await apiRequest(`/api/conversations/${selectedConversation}/chat`, {
-        method: "POST",
-        body: JSON.stringify({ message }),
-      });
+      const response = await apiRequest("POST", `/api/conversations/${selectedConversation}/chat`, { message });
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", selectedConversation, "messages"] });
@@ -146,10 +143,10 @@ export default function AgentChatPage() {
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
               {conversations.map((conversation) => (
-                <button
+                <div
                   key={conversation.id}
                   onClick={() => setSelectedConversation(conversation.id)}
-                  className={`w-full text-left p-3 rounded-lg hover-elevate transition-colors ${
+                  className={`w-full text-left p-3 rounded-lg hover-elevate transition-colors cursor-pointer group ${
                     selectedConversation === conversation.id ? "bg-accent" : ""
                   }`}
                   data-testid={`conversation-${conversation.id}`}
@@ -176,7 +173,7 @@ export default function AgentChatPage() {
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </ScrollArea>
