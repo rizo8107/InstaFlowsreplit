@@ -1,7 +1,15 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { IStorage } from "./storage";
+import { 
+  insertAgentSchema, 
+  updateAgentSchema, 
+  insertConversationSchema, 
+  insertMessageSchema, 
+  insertAgentMemorySchema 
+} from "@shared/schema";
 import type { InsertAgent, UpdateAgent, InsertConversation, InsertMessage, InsertAgentMemory } from "@shared/schema";
 import { GeminiService } from "./gemini-service";
+import { z } from "zod";
 
 // Auth middleware
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -12,6 +20,8 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function registerAgentRoutes(app: Express, storage: IStorage) {
+  // Initialize Gemini service with storage
+  GeminiService.initialize(storage);
   // Get all agents for current user
   app.get("/api/agents", requireAuth, async (req, res) => {
     try {
@@ -38,13 +48,16 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
   // Create agent
   app.post("/api/agents", requireAuth, async (req, res) => {
     try {
-      const agentData: InsertAgent = {
+      const validated = insertAgentSchema.parse({
         ...req.body,
         userId: req.user!.id,
-      };
-      const agent = await storage.createAgent(agentData);
+      });
+      const agent = await storage.createAgent(validated);
       res.json(agent);
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
       res.status(500).json({ error: error.message });
     }
   });
@@ -58,12 +71,16 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
       }
 
       const { userId, ...updates } = req.body;
-      const agent = await storage.updateAgent(req.params.id, updates as UpdateAgent);
+      const validated = updateAgentSchema.parse(updates);
+      const agent = await storage.updateAgent(req.params.id, validated);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
       res.json(agent);
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
       res.status(500).json({ error: error.message });
     }
   });
@@ -109,14 +126,17 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
         return res.status(404).json({ error: "Agent not found" });
       }
 
-      const conversationData: InsertConversation = {
+      const validated = insertConversationSchema.parse({
         agentId: req.params.id,
         userId: req.user!.id,
         title: req.body.title || "New Conversation",
-      };
-      const conversation = await storage.createConversation(conversationData);
+      });
+      const conversation = await storage.createConversation(validated);
       res.json(conversation);
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
       res.status(500).json({ error: error.message });
     }
   });
@@ -155,11 +175,12 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
       }
 
       // Save user message
-      await storage.createMessage({
+      const userMsgData = insertMessageSchema.parse({
         conversationId: req.params.id,
         role: "user",
         content: userMessage,
       });
+      await storage.createMessage(userMsgData);
 
       // Get conversation history
       const history = await storage.getMessagesByConversation(req.params.id);
@@ -176,16 +197,18 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
             message: userMessage,
             conversationHistory: history,
             memory,
+            storage,
           })
         : await GeminiService.chat({
             agent,
             message: userMessage,
             conversationHistory: history,
             memory,
+            storage,
           });
 
       // Save assistant message
-      const assistantMessage = await storage.createMessage({
+      const assistantMsgData = insertMessageSchema.parse({
         conversationId: req.params.id,
         role: "assistant",
         content: response.content,
@@ -193,11 +216,12 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
           toolsUsed: response.toolsUsed || [],
         },
       });
+      const assistantMessage = await storage.createMessage(assistantMsgData);
 
       // Save to memory if enabled
       if (agent.enableMemory && response.memoryAdded && response.memoryAdded.length > 0) {
         for (const content of response.memoryAdded) {
-          await storage.createMemory({
+          const memoryData = insertAgentMemorySchema.parse({
             agentId: agent.id,
             content,
             source: "learned",
@@ -206,6 +230,7 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
               timestamp: new Date().toISOString(),
             },
           });
+          await storage.createMemory(memoryData);
         }
       }
 
@@ -248,16 +273,19 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
         return res.status(404).json({ error: "Agent not found" });
       }
 
-      const memoryData: InsertAgentMemory = {
+      const validated = insertAgentMemorySchema.parse({
         agentId: req.params.id,
         content: req.body.content,
         source: req.body.source || "user_provided",
         metadata: req.body.metadata || {},
-      };
+      });
 
-      const memory = await storage.createMemory(memoryData);
+      const memory = await storage.createMemory(validated);
       res.json(memory);
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
       res.status(500).json({ error: error.message });
     }
   });

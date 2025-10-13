@@ -14,7 +14,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-export function registerRoutes(app: Express, storage: IStorage) {
+export async function registerRoutes(app: Express, storage: IStorage) {
   // Instagram Accounts
   app.get("/api/accounts", requireAuth, async (req, res) => {
     try {

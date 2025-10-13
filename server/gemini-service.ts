@@ -1,65 +1,30 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Agent, AgentMemory, Message } from "@shared/schema";
+import type { IStorage } from "./storage";
+import { FlowEngine } from "./flow-engine";
+import { InstagramAPI } from "./instagram-api";
 
-// Initialize Gemini AI
 const apiKey = process.env.GEMINI_API_KEY || "";
 const ai = new GoogleGenAI({ apiKey });
 
-// Available tools that agents can use
-const AVAILABLE_TOOLS = {
-  get_current_time: {
-    name: "get_current_time",
-    description: "Get the current date and time",
-    execute: async (): Promise<string> => {
-      return new Date().toLocaleString();
-    }
-  },
-  search_memory: {
-    name: "search_memory",
-    description: "Search agent's memory for relevant information",
-    parameters: {
-      query: "string"
-    },
-    execute: async (params: { query: string }, memory: AgentMemory[]): Promise<string> => {
-      // Simple keyword search in memory
-      const results = memory.filter(m => 
-        m.content.toLowerCase().includes(params.query.toLowerCase())
-      );
-      if (results.length === 0) return "No relevant information found in memory.";
-      return results.map(r => r.content).join("\n\n");
-    }
-  },
-  calculate: {
-    name: "calculate",
-    description: "Perform mathematical calculations",
-    parameters: {
-      expression: "string"
-    },
-    execute: async (params: { expression: string }): Promise<string> => {
-      try {
-        // Safe eval alternative - only allow numbers and basic operators
-        const sanitized = params.expression.replace(/[^0-9+\-*/().]/g, '');
-        const result = Function(`'use strict'; return (${sanitized})`)();
-        return `Result: ${result}`;
-      } catch (error) {
-        return `Error calculating: ${error}`;
-      }
-    }
-  },
-  get_instagram_stats: {
-    name: "get_instagram_stats",
-    description: "Get Instagram account statistics",
-    execute: async (): Promise<string> => {
-      return "This tool would fetch Instagram stats from the connected accounts.";
-    }
-  }
-};
+// Tool interface for type safety
+interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters?: {
+    type: string;
+    properties: Record<string, any>;
+    required?: string[];
+  };
+  execute: (params: any, context?: any) => Promise<string>;
+}
 
 export interface ChatOptions {
   agent: Agent;
   message: string;
   conversationHistory: Message[];
   memory?: AgentMemory[];
+  storage?: IStorage;
 }
 
 export interface ChatResponse {
@@ -69,6 +34,124 @@ export interface ChatResponse {
 }
 
 export class GeminiService {
+  private static tools: Map<string, ToolDefinition> = new Map();
+
+  /**
+   * Initialize tool registry
+   */
+  static initialize(storage: IStorage) {
+    // Time tool
+    this.tools.set("get_current_time", {
+      name: "get_current_time",
+      description: "Get the current date and time",
+      execute: async () => {
+        return new Date().toLocaleString();
+      }
+    });
+
+    // Knowledge base search tool (RAG)
+    this.tools.set("search_knowledge_base", {
+      name: "search_knowledge_base",
+      description: "Search the agent's knowledge base for relevant information using semantic search",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The search query to find relevant information"
+          }
+        },
+        required: ["query"]
+      },
+      execute: async (params: { query: string }, context: { agentId: string }) => {
+        const memory = await storage.getMemoryByAgent(context.agentId, 50);
+        
+        // Simple keyword-based retrieval (can be enhanced with embeddings)
+        const queryTerms = params.query.toLowerCase().split(/\s+/);
+        const scoredMemory = memory.map(m => {
+          const content = m.content.toLowerCase();
+          const score = queryTerms.reduce((acc, term) => {
+            return acc + (content.includes(term) ? 1 : 0);
+          }, 0);
+          return { memory: m, score };
+        }).filter(item => item.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
+
+        if (scoredMemory.length === 0) {
+          return "No relevant information found in knowledge base.";
+        }
+
+        return scoredMemory
+          .map(item => `- ${item.memory.content} (Source: ${item.memory.source})`)
+          .join("\n");
+      }
+    });
+
+    // Execute flow tool
+    this.tools.set("execute_flow", {
+      name: "execute_flow",
+      description: "Execute an Instagram automation flow by name",
+      parameters: {
+        type: "object",
+        properties: {
+          flowName: {
+            type: "string",
+            description: "The name of the flow to execute"
+          },
+          testData: {
+            type: "object",
+            description: "Test data to trigger the flow (e.g., {username: 'test', message_text: 'hello'})"
+          }
+        },
+        required: ["flowName"]
+      },
+      execute: async (params: { flowName: string; testData?: any }, context: { userId: string }) => {
+        try {
+          const flows = await storage.getAllFlows();
+          const flow = flows.find(f => 
+            f.name.toLowerCase() === params.flowName.toLowerCase() && 
+            f.active === true
+          );
+
+          if (!flow) {
+            return `Flow "${params.flowName}" not found or not active.`;
+          }
+
+          // Create test execution
+          const execution = await storage.createExecution({
+            flowId: flow.id,
+            webhookEventId: null,
+            status: "pending",
+            variables: params.testData || {},
+            executionPath: [],
+          });
+
+          // Get account
+          const account = await storage.getAccount(flow.accountId);
+          if (!account) {
+            return `Account for flow "${params.flowName}" not found.`;
+          }
+
+          const api = new InstagramAPI(account.accessToken);
+          const engine = new FlowEngine(api, storage);
+
+          const result = await engine.execute(
+            flow.id,
+            params.testData || {},
+            execution.id
+          );
+
+          return result.success 
+            ? `Flow "${params.flowName}" executed successfully.`
+            : `Flow "${params.flowName}" failed: ${result.error || "Unknown error"}`;
+        } catch (error: any) {
+          return `Error executing flow: ${error.message}`;
+        }
+      }
+    });
+  }
+
   /**
    * Generate chat completion with agent context
    */
@@ -77,10 +160,9 @@ export class GeminiService {
 
     // Build context from memory (RAG)
     const memoryContext = agent.enableMemory && memory.length > 0
-      ? `\n\nRelevant Context from Memory:\n${memory.slice(0, 5).map(m => m.content).join('\n')}`
+      ? `\n\nRelevant Context from Knowledge Base:\n${memory.slice(0, 5).map(m => `- ${m.content}`).join('\n')}`
       : '';
 
-    // Build system prompt with memory context
     const fullSystemPrompt = `${agent.systemPrompt}${memoryContext}`;
 
     // Convert conversation history to Gemini format
@@ -89,7 +171,6 @@ export class GeminiService {
       parts: [{ text: msg.content }]
     }));
 
-    // Add current user message
     contents.push({
       role: 'user',
       parts: [{ text: message }]
@@ -108,13 +189,13 @@ export class GeminiService {
 
       const responseText = response.text || "I couldn't generate a response.";
 
-      // Extract potential memory items from conversation
+      // Smart memory extraction
       const memoryAdded: string[] = [];
-      if (agent.enableMemory) {
-        // Simple heuristic: if response contains important info, save it
-        // In production, use more sophisticated extraction
-        if (responseText.length > 50 && responseText.includes('.')) {
-          memoryAdded.push(responseText.substring(0, 200));
+      if (agent.enableMemory && responseText.length > 30) {
+        // Extract facts and learnings from the response
+        const sentences = responseText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+        if (sentences.length > 0) {
+          memoryAdded.push(sentences[0].trim());
         }
       }
 
@@ -130,31 +211,43 @@ export class GeminiService {
   }
 
   /**
-   * Chat with tool calling support
+   * Chat with tool calling support using Gemini's native function calling
    */
   static async chatWithTools(options: ChatOptions): Promise<ChatResponse> {
-    const { agent, message, conversationHistory, memory = [] } = options;
+    const { agent, message, conversationHistory, memory = [], storage } = options;
 
     if (!agent.enableTools || agent.tools.length === 0) {
       return this.chat(options);
     }
 
-    // Filter available tools based on agent configuration
-    const agentTools = agent.tools
-      .filter(toolName => toolName in AVAILABLE_TOOLS)
-      .map(toolName => AVAILABLE_TOOLS[toolName as keyof typeof AVAILABLE_TOOLS]);
+    // Filter and format tools for Gemini
+    const selectedTools = agent.tools
+      .filter(name => this.tools.has(name))
+      .map(name => {
+        const tool = this.tools.get(name)!;
+        return {
+          functionDeclarations: [{
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters || {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }]
+        };
+      });
+
+    if (selectedTools.length === 0) {
+      return this.chat(options);
+    }
 
     // Build memory context
     const memoryContext = agent.enableMemory && memory.length > 0
-      ? `\n\nRelevant Context:\n${memory.slice(0, 5).map(m => m.content).join('\n')}`
+      ? `\n\nRelevant Context:\n${memory.slice(0, 5).map(m => `- ${m.content}`).join('\n')}`
       : '';
 
-    const fullSystemPrompt = `${agent.systemPrompt}${memoryContext}
-
-Available Tools:
-${agentTools.map(t => `- ${t.name}: ${t.description}`).join('\n')}
-
-To use a tool, mention it explicitly in your response.`;
+    const fullSystemPrompt = `${agent.systemPrompt}${memoryContext}`;
 
     // Convert history
     const contents = conversationHistory.map(msg => ({
@@ -168,7 +261,7 @@ To use a tool, mention it explicitly in your response.`;
     });
 
     try {
-      const response = await ai.models.generateContent({
+      const initialResponse = await ai.models.generateContent({
         model: agent.model,
         config: {
           systemInstruction: fullSystemPrompt,
@@ -176,28 +269,89 @@ To use a tool, mention it explicitly in your response.`;
           maxOutputTokens: parseInt(agent.maxTokens),
         },
         contents,
+        tools: selectedTools.length > 0 ? selectedTools : undefined,
       });
 
-      let responseText = response.text || "I couldn't generate a response.";
+      let responseText = initialResponse.text || "";
       const toolsUsed: string[] = [];
 
-      // Check if response mentions any tools and execute them
-      for (const tool of agentTools) {
-        if (responseText.toLowerCase().includes(tool.name.toLowerCase())) {
-          try {
-            const toolResult = await tool.execute({}, memory);
-            responseText = `${responseText}\n\n[Tool: ${tool.name}]\n${toolResult}`;
-            toolsUsed.push(tool.name);
-          } catch (error) {
-            console.error(`Tool execution error for ${tool.name}:`, error);
+      // Extract function calls from response (correct SDK format)
+      const functionCalls = initialResponse.candidates?.[0]?.content?.parts
+        ?.filter((part: any) => part.functionCall)
+        .map((part: any) => part.functionCall) || [];
+
+      // Execute tools if any function calls were made
+      if (functionCalls.length > 0 && storage) {
+        const functionResponses: any[] = [];
+        
+        for (const functionCall of functionCalls) {
+          const tool = this.tools.get(functionCall.name);
+          if (tool) {
+            try {
+              const context = { agentId: agent.id, userId: agent.userId };
+              const result = await tool.execute(functionCall.args || {}, context);
+              
+              // Format tool response for Gemini
+              functionResponses.push({
+                functionResponse: {
+                  name: functionCall.name,
+                  response: { result }
+                }
+              });
+              
+              toolsUsed.push(tool.name);
+            } catch (error: any) {
+              console.error(`Tool execution error for ${functionCall.name}:`, error);
+              functionResponses.push({
+                functionResponse: {
+                  name: functionCall.name,
+                  response: { error: error.message }
+                }
+              });
+            }
           }
+        }
+
+        // Send tool results back to Gemini for final response
+        if (functionResponses.length > 0) {
+          const followUpContents = [
+            ...contents,
+            {
+              role: 'model',
+              parts: functionCalls.map((fc: any) => ({ functionCall: fc }))
+            },
+            {
+              role: 'function',
+              parts: functionResponses
+            }
+          ];
+
+          const finalResponse = await ai.models.generateContent({
+            model: agent.model,
+            config: {
+              systemInstruction: fullSystemPrompt,
+              temperature: parseFloat(agent.temperature),
+              maxOutputTokens: parseInt(agent.maxTokens),
+            },
+            contents: followUpContents,
+            tools: selectedTools.length > 0 ? selectedTools : undefined,
+          });
+
+          responseText = finalResponse.text || "I've processed the tool results.";
         }
       }
 
-      // Extract memory
+      if (!responseText) {
+        responseText = "I processed your request but don't have a text response.";
+      }
+
+      // Smart memory extraction
       const memoryAdded: string[] = [];
-      if (agent.enableMemory && responseText.length > 50) {
-        memoryAdded.push(responseText.substring(0, 200));
+      if (agent.enableMemory && responseText.length > 30) {
+        const sentences = responseText.split(/[.!?]+/).filter(s => s.trim().length > 20);
+        if (sentences.length > 0) {
+          memoryAdded.push(sentences[0].trim());
+        }
       }
 
       return {
@@ -212,79 +366,16 @@ To use a tool, mention it explicitly in your response.`;
   }
 
   /**
-   * Analyze text sentiment
-   */
-  static async analyzeSentiment(text: string): Promise<{ rating: number; confidence: number }> {
-    try {
-      const systemPrompt = `You are a sentiment analysis expert. 
-Analyze the sentiment of the text and provide a rating from 1 to 5 stars and a confidence score between 0 and 1.
-Respond with JSON in this format: {'rating': number, 'confidence': number}`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "object",
-            properties: {
-              rating: { type: "number" },
-              confidence: { type: "number" },
-            },
-            required: ["rating", "confidence"],
-          },
-        },
-        contents: text,
-      });
-
-      const rawJson = response.text;
-      if (rawJson) {
-        return JSON.parse(rawJson);
-      }
-      throw new Error("Empty response from model");
-    } catch (error: any) {
-      throw new Error(`Failed to analyze sentiment: ${error.message}`);
-    }
-  }
-
-  /**
-   * Extract structured data from text
-   */
-  static async extractData(text: string, schema: any): Promise<any> {
-    try {
-      const systemPrompt = `Extract structured data from the given text according to the provided schema.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        config: {
-          systemInstruction: systemPrompt,
-          responseMimeType: "application/json",
-          responseSchema: schema,
-        },
-        contents: text,
-      });
-
-      const rawJson = response.text;
-      if (rawJson) {
-        return JSON.parse(rawJson);
-      }
-      throw new Error("Empty response from model");
-    } catch (error: any) {
-      throw new Error(`Failed to extract data: ${error.message}`);
-    }
-  }
-
-  /**
    * Get list of available tools
    */
   static getAvailableTools(): string[] {
-    return Object.keys(AVAILABLE_TOOLS);
+    return Array.from(this.tools.keys());
   }
 
   /**
    * Get tool details
    */
-  static getToolDetails(toolName: string): any {
-    return AVAILABLE_TOOLS[toolName as keyof typeof AVAILABLE_TOOLS] || null;
+  static getToolDetails(toolName: string): ToolDefinition | null {
+    return this.tools.get(toolName) || null;
   }
 }
