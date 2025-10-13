@@ -77,6 +77,27 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  app.get("/api/accounts/:id/media", requireAuth, async (req, res) => {
+    try {
+      const account = await storage.getAccount(req.params.id);
+      if (!account) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      
+      // Verify account belongs to user
+      if (account.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const api = new InstagramAPI(account.accessToken, account.instagramUserId);
+      const limit = parseInt(req.query.limit as string) || 25;
+      const media = await api.getUserMedia(limit);
+      res.json(media);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Flows
   app.get("/api/flows", requireAuth, async (req, res) => {
     try {
@@ -710,11 +731,26 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
             const flows = await storage.getActiveFlows();
             const matchingFlows = flows.filter(
-              (f) =>
-                f.accountId === account.id &&
-                f.nodes.some(
+              (f) => {
+                if (f.accountId !== account.id) return false;
+                
+                const triggerNode = f.nodes.find(
                   (n: any) => n.type === "trigger" && n.data.triggerType === eventType
-                )
+                );
+                
+                if (!triggerNode) return false;
+                
+                // If trigger has media filter enabled, check if media matches
+                if (triggerNode.data.filterByMedia && triggerNode.data.specificMediaId) {
+                  const mediaId = triggerData.media_id;
+                  if (mediaId !== triggerNode.data.specificMediaId) {
+                    console.log(`Skipping flow ${f.name}: media filter enabled but media ${mediaId} doesn't match ${triggerNode.data.specificMediaId}`);
+                    return false;
+                  }
+                }
+                
+                return true;
+              }
             );
 
             let allExecutionsSuccessful = matchingFlows.length > 0;

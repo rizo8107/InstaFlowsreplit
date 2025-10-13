@@ -4,10 +4,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Plus, Trash2, CheckCircle, AlertTriangle } from "lucide-react";
+import { X, Plus, Trash2, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useQuery } from "@tanstack/react-query";
 import type { InstagramAccount } from "@shared/schema";
+
+interface InstagramMedia {
+  id: string;
+  caption?: string;
+  media_type: string;
+  media_url?: string;
+  permalink?: string;
+  thumbnail_url?: string;
+  timestamp?: string;
+  username?: string;
+}
 
 interface NodeConfigPanelProps {
   selectedNode: any;
@@ -75,6 +88,31 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Media Filter for Comment/Mention Triggers */}
+            {(selectedNode.data.triggerType === "comment_received" || selectedNode.data.triggerType === "mention_received") && selectedAccount && (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="filter-by-media"
+                    checked={selectedNode.data.filterByMedia || false}
+                    onCheckedChange={(checked) => {
+                      handleUpdate({ 
+                        filterByMedia: checked,
+                        specificMediaId: checked ? selectedNode.data.specificMediaId : null
+                      });
+                    }}
+                    data-testid="checkbox-filter-by-media"
+                  />
+                  <Label htmlFor="filter-by-media" className="text-sm font-normal cursor-pointer">
+                    Filter by specific post or reel
+                  </Label>
+                </div>
+
+                {selectedNode.data.filterByMedia && <MediaPicker selectedAccount={selectedAccount} selectedMediaId={selectedNode.data.specificMediaId} onSelect={(mediaId) => handleUpdate({ specificMediaId: mediaId })} />}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="trigger-label">Label (Optional)</Label>
               <Input
@@ -521,5 +559,80 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MediaPicker({ selectedAccount, selectedMediaId, onSelect }: { selectedAccount: InstagramAccount; selectedMediaId?: string; onSelect: (mediaId: string) => void }) {
+  const { data: mediaData, isLoading } = useQuery<{ data: InstagramMedia[] }>({
+    queryKey: ["/api/accounts", selectedAccount.id, "media"],
+    queryFn: async () => {
+      const response = await fetch(`/api/accounts/${selectedAccount.id}/media?limit=12`);
+      if (!response.ok) throw new Error("Failed to fetch media");
+      return response.json();
+    },
+    enabled: !!selectedAccount.id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!mediaData?.data || mediaData.data.length === 0) {
+    return (
+      <Alert>
+        <AlertDescription className="text-sm">
+          No posts or reels found for this account.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm">Select a post or reel</Label>
+      <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+        {mediaData.data.map((media) => (
+          <button
+            key={media.id}
+            onClick={() => onSelect(media.id)}
+            className={`relative group overflow-hidden rounded border-2 transition-all ${
+              selectedMediaId === media.id
+                ? "border-primary ring-2 ring-primary ring-offset-1"
+                : "border-transparent hover:border-muted-foreground/30"
+            }`}
+            data-testid={`media-item-${media.id}`}
+          >
+            <div className="aspect-square">
+              <img
+                src={media.thumbnail_url || media.media_url}
+                alt={media.caption?.substring(0, 50) || "Media"}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {media.permalink?.includes('/reel/') && (
+              <Badge variant="secondary" className="absolute top-1 right-1 text-xs">
+                Reel
+              </Badge>
+            )}
+            {selectedMediaId === media.id && (
+              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-primary" />
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+      {selectedMediaId && mediaData.data.find(m => m.id === selectedMediaId)?.caption && (
+        <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+          <p className="line-clamp-2">
+            {mediaData.data.find(m => m.id === selectedMediaId)?.caption}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

@@ -169,6 +169,31 @@ export class InstagramAPI {
     }
   }
 
+  async getUserMedia(limit: number = 25): Promise<{ data: InstagramMedia[] }> {
+    try {
+      console.log(`[InstagramAPI] Fetching user media (limit: ${limit})`);
+      
+      const response = await axios.get(`${GRAPH_API_BASE}/${this.instagramUserId}/media`, {
+        params: {
+          access_token: this.accessToken,
+          fields: "id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username",
+          limit,
+        },
+      });
+      console.log(`[InstagramAPI] Fetched ${response.data.data.length} media items`);
+      return response.data;
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
+      const errorDetails = JSON.stringify(errorData || error.message);
+      
+      console.error(`[InstagramAPI] Error fetching user media:`, errorDetails);
+      console.error(`[InstagramAPI] Full error:`, error);
+      
+      throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
+    }
+  }
+
   async likeComment(commentId: string): Promise<any> {
     try {
       console.log(`[InstagramAPI] Liking comment ${commentId}`);
