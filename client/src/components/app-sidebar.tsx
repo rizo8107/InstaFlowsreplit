@@ -1,4 +1,4 @@
-import { Home, Workflow, Instagram, Activity, Settings, Plus, Sparkles, Users, Bot, LogOut } from "lucide-react";
+import { Home, Workflow, Instagram, Activity, Settings, Plus, Sparkles, Users, Bot, LogOut, Library } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -47,6 +47,11 @@ const menuItems = [
     title: "AI Agents",
     url: "/agents",
     icon: Bot,
+  },
+  {
+    title: "Agent Templates",
+    url: "/agent-templates",
+    icon: Library,
   },
   {
     title: "Activity",

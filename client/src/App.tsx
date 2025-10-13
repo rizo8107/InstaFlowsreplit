@@ -15,6 +15,7 @@ import FlowBuilder from "@/pages/flow-builder";
 import Accounts from "@/pages/accounts";
 import ActivityPage from "@/pages/activity";
 import Templates from "@/pages/templates";
+import AgentTemplatesPage from "@/pages/agent-templates";
 import WebhookSetup from "@/pages/webhook-setup";
 import Contacts from "@/pages/contacts";
 import AgentsPage from "@/pages/agents";
@@ -86,6 +87,11 @@ function Router() {
       <Route path="/agents">
         <ProtectedRoute>
           <AgentsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/agent-templates">
+        <ProtectedRoute>
+          <AgentTemplatesPage />
         </ProtectedRoute>
       </Route>
       <Route path="/agents/:id/chat">
