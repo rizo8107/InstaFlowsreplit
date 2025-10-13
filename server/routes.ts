@@ -910,6 +910,10 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  // AI Agents (lazy import to avoid circular dependencies)
+  const agentRoutes = await import("./agent-routes");
+  agentRoutes.registerAgentRoutes(app, storage);
+
   const httpServer = createServer(app);
   return httpServer;
 }
