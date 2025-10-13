@@ -8,15 +8,16 @@ import { setupAuth } from "./auth";
 
 const app = express();
 
-// Capture raw body for webhook signature validation (before JSON parsing)
-app.use('/api/webhooks', express.json({
+// Capture raw body for webhook signature validation (must be BEFORE general express.json())
+app.use(express.json({
   verify: (req: any, res, buf) => {
-    req.rawBody = buf.toString('utf8');
+    // Only capture raw body for webhook routes
+    if (req.path.startsWith('/api/webhooks')) {
+      req.rawBody = buf.toString('utf8');
+    }
   }
 }));
 
-// Regular JSON parsing for all other routes
-app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Setup authentication

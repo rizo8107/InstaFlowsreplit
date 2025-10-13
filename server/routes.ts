@@ -33,6 +33,11 @@ function validateWebhookSignature(
     return false;
   }
 
+  // Debug: Log payload details
+  console.log("🔍 Signature Validation Debug:");
+  console.log(`   Payload length: ${payload.length} bytes`);
+  console.log(`   Payload preview: ${payload.substring(0, 100)}...`);
+
   // Remove 'sha256=' prefix
   const signatureHash = signature.startsWith("sha256=") 
     ? signature.substring(7) 
@@ -63,6 +68,8 @@ function validateWebhookSignature(
       console.log("❌ Signature validation failed");
       console.log(`   Received: ${signatureHash.substring(0, 20)}...`);
       console.log(`   Expected: ${expectedHash.substring(0, 20)}...`);
+    } else {
+      console.log("✅ Signature validation successful");
     }
 
     return isValid;
@@ -621,6 +628,14 @@ export function registerRoutes(app: Express, storage: IStorage) {
       // 1) Validate webhook signature (CRITICAL SECURITY)
       const appSecret = process.env.INSTAGRAM_APP_SECRET || "";
       const signature = req.headers['x-hub-signature-256'] as string | undefined;
+      
+      // Debug: Check raw body capture
+      console.log("\n📥 Webhook POST received:");
+      console.log(`   Raw body exists: ${!!req.rawBody}`);
+      console.log(`   Raw body type: ${typeof req.rawBody}`);
+      if (req.rawBody) {
+        console.log(`   Raw body length: ${req.rawBody.length} bytes`);
+      }
       
       if (!validateWebhookSignature(req.rawBody || JSON.stringify(req.body), signature, appSecret)) {
         console.error("🚨 SECURITY: Invalid webhook signature - possible forged request!");

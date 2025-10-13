@@ -54,6 +54,7 @@ The application is a full-stack TypeScript project, utilizing an Express.js back
     - Content webhooks: Subscribes IG account with User Access Token to `comments,mentions,live_comments,story_insights`
     - Auto-subscribes during OAuth callback for seamless setup
   - **Webhook Security**: HMAC SHA256 signature validation on all incoming webhooks, DoS prevention, timing-safe comparison
+    - **Fixed**: Single `express.json()` middleware with conditional raw body capture prevents middleware conflicts
   - **Fast ACK**: Webhook handler responds with 200 OK within 1s, processes flows async in background to prevent Instagram timeouts
   - **Verify Token**: Webhook verify token is hardcoded as "zenthra" for all environments (preview and production) for simplicity and consistency
 - **Instagram Business Login OAuth**: Direct OAuth flow using instagram.com/oauth/authorize for secure Instagram account connection with long-lived access tokens (60-day validity).
