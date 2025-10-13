@@ -235,6 +235,33 @@ export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type UpdateAgent = z.infer<typeof updateAgentSchema>;
 export type Agent = typeof agents.$inferSelect;
 
+// Agent Templates
+export const agentTemplates = pgTable("agent_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").notNull().default("🤖"), // emoji or icon name
+  category: text("category").notNull(), // customer-support, lead-qualification, faq, sales, general
+  model: text("model").notNull().default("gemini-2.5-flash"),
+  systemPrompt: text("system_prompt").notNull(),
+  temperature: text("temperature").notNull().default("0.7"),
+  maxTokens: text("max_tokens").notNull().default("8192"),
+  enableMemory: boolean("enable_memory").notNull().default(true),
+  enableTools: boolean("enable_tools").notNull().default(true),
+  tools: jsonb("tools").notNull().default([]).$type<string[]>(),
+  isPublic: boolean("is_public").notNull().default(true),
+  useCount: text("use_count").notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAgentTemplateSchema = createInsertSchema(agentTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAgentTemplate = z.infer<typeof insertAgentTemplateSchema>;
+export type AgentTemplate = typeof agentTemplates.$inferSelect;
+
 // Agent Conversations
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
