@@ -23,6 +23,13 @@ The MVP is complete with:
 - Activity logging dashboard
 
 ## Recent Changes
+- **Deployment Documentation (October 13, 2025)**: Added comprehensive installation and deployment guides
+  - **INSTALLATION_GUIDE.md**: Complete installation guide for GitHub with local dev, Replit, Easypanel, and VPS deployment
+  - **EASYPANEL.md**: Dedicated Easypanel deployment guide with Docker configurations
+  - **DEPLOYMENT.md**: Master deployment guide covering all platforms
+  - **Docker Setup**: Dockerfile, docker-compose.yml, .dockerignore, .env.example for containerized deployment
+  - **README.md**: Updated with installation options table and prominent link to installation guide
+  - Ready for GitHub publication with professional documentation
 - **Media-Specific Conditions & Display (October 13, 2025)**: Added media filtering and visual display
   - **Media Details Fetch**: Webhook handler now fetches full media details (caption, thumbnail, permalink, type)
   - **Reel Detection**: Automatically detects reels via permalink pattern (`/reel/`)

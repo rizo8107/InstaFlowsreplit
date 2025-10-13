@@ -2,6 +2,8 @@
 
 A comprehensive web-based Instagram automation platform for managing multiple Instagram accounts with visual drag-and-drop flow builder.
 
+> 📖 **[View Complete Installation Guide →](./INSTALLATION_GUIDE.md)**
+
 ## ✨ Features
 
 - 🎨 **Visual Flow Builder** - Drag-and-drop interface for creating automation workflows
@@ -16,6 +18,14 @@ A comprehensive web-based Instagram automation platform for managing multiple In
 - 📞 **Contacts Management** - Auto-save Instagram user contacts
 
 ## 🚀 Quick Start
+
+### 📦 Installation Options
+
+| Method | Difficulty | Best For | Documentation |
+|--------|-----------|----------|---------------|
+| **Replit** | ⭐ Easy | Quick deployment, beginners | [One-click publish](#) |
+| **Easypanel** | ⭐⭐ Medium | Production, self-hosting | [EASYPANEL.md](./EASYPANEL.md) |
+| **VPS/Cloud** | ⭐⭐⭐ Advanced | Custom infrastructure | [INSTALLATION_GUIDE.md](./INSTALLATION_GUIDE.md) |
 
 ### Deploy on Replit (Easiest - 1-Click)
 
@@ -38,7 +48,7 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
+📚 **Full Installation Guide:** [INSTALLATION_GUIDE.md](./INSTALLATION_GUIDE.md)
 
 ## 📋 Requirements
 
