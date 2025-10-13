@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Make sure npm doesn't omit dev deps due to environment defaults
+ENV NPM_CONFIG_PRODUCTION=false
 RUN npm config set production false
 # Install ALL deps including dev (vite, esbuild, typescript, etc.)
 RUN npm ci --include=dev
