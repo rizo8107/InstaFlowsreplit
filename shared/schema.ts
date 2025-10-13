@@ -60,6 +60,7 @@ export const actionTypeEnum = z.enum([
   "send_link",
   "api_call",
   "delay",
+  "ai_agent",
 ]);
 
 export const triggerTypeEnum = z.enum([
@@ -231,6 +232,7 @@ export const insertAgentSchema = createInsertSchema(agents).omit({
 export const updateAgentSchema = insertAgentSchema.partial();
 
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
+export type UpdateAgent = z.infer<typeof updateAgentSchema>;
 export type Agent = typeof agents.$inferSelect;
 
 // Agent Conversations
@@ -288,3 +290,25 @@ export const insertAgentMemorySchema = createInsertSchema(agentMemory).omit({
 
 export type InsertAgentMemory = z.infer<typeof insertAgentMemorySchema>;
 export type AgentMemory = typeof agentMemory.$inferSelect;
+
+// Active Agent Conversations (for flow-triggered agents)
+export const activeAgentConversations = pgTable("active_agent_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id, { onDelete: 'cascade' }),
+  executionId: varchar("execution_id").notNull().references(() => flowExecutions.id, { onDelete: 'cascade' }),
+  conversationId: varchar("conversation_id").notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  instagramUserId: text("instagram_user_id").notNull(), // The Instagram user the agent is conversing with
+  accountId: varchar("account_id").notNull().references(() => instagramAccounts.id, { onDelete: 'cascade' }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastMessageAt: timestamp("last_message_at").notNull().defaultNow(),
+});
+
+export const insertActiveAgentConversationSchema = createInsertSchema(activeAgentConversations).omit({
+  id: true,
+  createdAt: true,
+  lastMessageAt: true,
+});
+
+export type InsertActiveAgentConversation = z.infer<typeof insertActiveAgentConversationSchema>;
+export type ActiveAgentConversation = typeof activeAgentConversations.$inferSelect;

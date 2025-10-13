@@ -30,6 +30,11 @@ interface NodeConfigPanelProps {
 }
 
 export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccount }: NodeConfigPanelProps) {
+  // Fetch agents at top level to comply with Rules of Hooks
+  const { data: agents = [], isLoading: isLoadingAgents } = useQuery<any[]>({
+    queryKey: ['/api/agents']
+  });
+
   if (!selectedNode) return null;
 
   const handleUpdate = (updates: any) => {
@@ -286,6 +291,7 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                   <SelectItem value="delay">Delay</SelectItem>
                   <SelectItem value="set_variable">Set Variable</SelectItem>
                   <SelectItem value="stop_flow">Stop Flow</SelectItem>
+                  <SelectItem value="ai_agent">AI Agent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -543,6 +549,47 @@ export function NodeConfigPanel({ selectedNode, onClose, onUpdate, selectedAccou
                   This action will stop the flow execution. No further nodes will be processed.
                 </p>
               </div>
+            )}
+
+            {selectedNode.data.actionType === "ai_agent" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="agent-select">Select AI Agent</Label>
+                  <Select
+                    value={selectedNode.data.actionConfig?.agentId || ""}
+                    onValueChange={(value) => handleUpdate({ 
+                      actionConfig: { ...selectedNode.data.actionConfig, agentId: value }
+                    })}
+                  >
+                    <SelectTrigger id="agent-select" data-testid="select-ai-agent">
+                      <SelectValue placeholder={isLoadingAgents ? "Loading agents..." : "Choose an agent"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                      {agents.length === 0 && !isLoadingAgents && (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No agents available. Create one in AI Agents page.
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedNode.data.actionConfig?.agentId && (
+                  <div className="p-3 bg-muted rounded-md space-y-2">
+                    <p className="text-sm font-medium">How it works:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                      <li>Agent starts conversation with the Instagram user</li>
+                      <li>Automatically responds to user's messages</li>
+                      <li>Conversation continues until deactivated</li>
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="space-y-2">

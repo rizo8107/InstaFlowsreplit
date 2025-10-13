@@ -282,7 +282,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
           account.pageId || undefined,
           account.pageAccessToken || undefined
         );
-        const engine = new FlowEngine(api, flow, triggerData);
+        const engine = new FlowEngine(api, flow, triggerData, execution.id);
         const result = await engine.execute();
 
         await storage.updateExecution(execution.id, {
@@ -533,6 +533,83 @@ export async function registerRoutes(app: Express, storage: IStorage) {
               processed: false,
             });
 
+            // Check if there's an active agent conversation for this user
+            if (triggerData.sender_id) {
+              const activeConversation = await storage.getActiveConversationByInstagramUser(
+                triggerData.sender_id,
+                account.id
+              );
+
+              if (activeConversation) {
+                console.log(`[Webhook] Active agent conversation found for user ${triggerData.sender_id}`);
+                
+                try {
+                  const { GeminiService } = await import("./gemini-service");
+                  
+                  // Get the agent
+                  const agent = await storage.getAgent(activeConversation.agentId);
+                  if (!agent) {
+                    console.error(`[Webhook] Agent ${activeConversation.agentId} not found`);
+                  } else {
+                    // Get conversation history and memory
+                    const conversationHistory = await storage.getMessagesByConversation(activeConversation.conversationId);
+                    const memory = agent.enableMemory ? await storage.getMemoryByAgent(agent.id, 10) : [];
+
+                    // Save the user's message
+                    await storage.createMessage({
+                      conversationId: activeConversation.conversationId,
+                      role: "user",
+                      content: triggerData.message_text || "",
+                    });
+
+                    // Get agent response
+                    const agentResponse = await GeminiService.chatWithTools({
+                      agent,
+                      message: triggerData.message_text || "",
+                      conversationHistory,
+                      memory,
+                      storage,
+                    });
+
+                    // Save agent's response
+                    await storage.createMessage({
+                      conversationId: activeConversation.conversationId,
+                      role: "assistant",
+                      content: agentResponse.content,
+                    });
+
+                    // Send the agent's response as a DM
+                    const api = new InstagramAPI(
+                      account.accessToken, 
+                      account.instagramUserId || undefined,
+                      account.pageId || undefined,
+                      account.pageAccessToken || undefined
+                    );
+                    
+                    await api.sendDirectMessage(
+                      triggerData.sender_id,
+                      agentResponse.content
+                    );
+
+                    // Update conversation timestamp
+                    await storage.updateActiveAgentConversation(activeConversation.id, {
+                      lastMessageAt: new Date(),
+                    });
+
+                    // Mark webhook as processed
+                    await storage.markWebhookEventProcessed(webhookEvent.id);
+                    console.log(`[Webhook] Agent conversation handled successfully`);
+                    
+                    // Skip normal flow execution since agent handled it
+                    continue;
+                  }
+                } catch (error: any) {
+                  console.error(`[Webhook] Error in agent conversation:`, error);
+                  // Fall through to normal flow execution on error
+                }
+              }
+            }
+
             const flows = await storage.getActiveFlows();
             const matchingFlows = flows.filter(
               (f) =>
@@ -562,7 +639,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
           account.pageId || undefined,
           account.pageAccessToken || undefined
         );
-                const engine = new FlowEngine(api, flow, triggerData);
+                const engine = new FlowEngine(api, flow, triggerData, execution.id);
                 const result = await engine.execute();
 
                 await storage.updateExecution(execution.id, {
@@ -773,7 +850,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
           account.pageId || undefined,
           account.pageAccessToken || undefined
         );
-                const engine = new FlowEngine(api, flow, triggerData);
+                const engine = new FlowEngine(api, flow, triggerData, execution.id);
                 const result = await engine.execute();
 
                 await storage.updateExecution(execution.id, {

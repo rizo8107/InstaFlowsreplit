@@ -15,6 +15,7 @@ interface ExecutionContext {
   variables: Record<string, any>;
   executionPath: string[];
   nodeResults: NodeExecutionResult[];
+  executionId?: string;
 }
 
 export class FlowEngine {
@@ -22,7 +23,7 @@ export class FlowEngine {
   private flow: Flow;
   private context: ExecutionContext;
 
-  constructor(api: InstagramAPI, flow: Flow, triggerData: any) {
+  constructor(api: InstagramAPI, flow: Flow, triggerData: any, executionId?: string) {
     this.api = api;
     this.flow = flow;
     this.context = {
@@ -30,6 +31,7 @@ export class FlowEngine {
       variables: this.extractVariables(triggerData),
       executionPath: [],
       nodeResults: [],
+      executionId,
     };
   }
 
@@ -313,6 +315,106 @@ export class FlowEngine {
       case "stop_flow":
         console.log(`[FlowEngine] Stopping flow execution`);
         return { success: true, action: "stop_flow", message: "Flow execution stopped" };
+
+      case "ai_agent":
+        if (config.agentId && this.context.variables.sender_id) {
+          console.log(`[FlowEngine] Starting AI agent conversation with agent ${config.agentId}`);
+          try {
+            const { GeminiService } = await import("./gemini-service");
+            
+            // Get the agent
+            const agent = await storage.getAgent(config.agentId);
+            if (!agent) {
+              throw new Error(`Agent ${config.agentId} not found`);
+            }
+
+            // Get the account to find userId
+            const account = await storage.getAccount(this.flow.accountId);
+            if (!account) {
+              throw new Error(`Account ${this.flow.accountId} not found`);
+            }
+
+            // Create a conversation for this agent interaction
+            const conversation = await storage.createConversation({
+              agentId: config.agentId,
+              userId: account.userId,
+              title: `Flow: ${this.flow.name} - ${this.context.variables.username || this.context.variables.sender_id}`,
+            });
+
+            // Get execution ID from context
+            const executionId = this.context.executionId;
+            if (!executionId) {
+              throw new Error("Execution ID not found in context. AI Agent action requires execution ID.");
+            }
+
+            // Create active agent conversation
+            const activeConversation = await storage.createActiveAgentConversation({
+              agentId: config.agentId,
+              executionId,
+              conversationId: conversation.id,
+              instagramUserId: this.context.variables.sender_id,
+              accountId: this.flow.accountId,
+              isActive: true,
+            });
+
+            // Prepare initial context for the agent
+            const initialMessage = `New ${this.context.triggerData.trigger_type || 'message'} from Instagram user @${this.context.variables.username || 'user'}: "${this.context.variables.message_text || ''}"`;
+
+            // Save the flow-triggered context message
+            await storage.createMessage({
+              conversationId: conversation.id,
+              role: "user",
+              content: initialMessage,
+            });
+
+            // Get conversation history and memory
+            const conversationHistory = await storage.getMessagesByConversation(conversation.id);
+            const memory = agent.enableMemory ? await storage.getMemoryByAgent(agent.id, 10) : [];
+
+            // Send the initial message to the agent using static method
+            const agentResponse = await GeminiService.chatWithTools({
+              agent,
+              message: initialMessage,
+              conversationHistory,
+              memory,
+              storage,
+            });
+
+            // Save the agent's response to conversation history
+            if (agentResponse && agentResponse.content) {
+              await storage.createMessage({
+                conversationId: conversation.id,
+                role: "assistant",
+                content: agentResponse.content,
+              });
+
+              // Send the agent's response as a DM
+              await this.api.sendDirectMessage(
+                this.context.variables.sender_id,
+                agentResponse.content
+              );
+            } else {
+              console.warn(`[FlowEngine] Agent returned no content for conversation ${conversation.id}`);
+            }
+
+            console.log(`[FlowEngine] AI agent conversation started successfully`);
+            return { 
+              success: true, 
+              action: "ai_agent", 
+              agentId: config.agentId,
+              conversationId: conversation.id,
+              activeConversationId: activeConversation.id,
+              response: agentResponse?.content || "Agent started",
+            };
+          } catch (error: any) {
+            console.error(`[FlowEngine] Failed to start AI agent conversation:`, error);
+            throw error;
+          }
+        } else {
+          const errorMsg = `Missing agentId or sender_id for ai_agent action (agentId: ${config.agentId}, sender_id: ${this.context.variables.sender_id})`;
+          console.log(`[FlowEngine] ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
 
       default:
         const errorMsg = `Unknown action type: ${actionType}`;

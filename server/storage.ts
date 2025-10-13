@@ -23,6 +23,8 @@ import {
   type InsertMessage,
   type AgentMemory,
   type InsertAgentMemory,
+  type ActiveAgentConversation,
+  type InsertActiveAgentConversation,
   instagramAccounts,
   flows,
   flowExecutions,
@@ -33,7 +35,8 @@ import {
   agents,
   conversations,
   messages,
-  agentMemory
+  agentMemory,
+  activeAgentConversations
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -128,6 +131,14 @@ export interface IStorage {
   getMemoryByAgent(agentId: string, limit?: number): Promise<AgentMemory[]>;
   createMemory(memory: InsertAgentMemory): Promise<AgentMemory>;
   deleteMemory(id: string): Promise<boolean>;
+
+  // Active Agent Conversations (for flow-triggered agents)
+  getActiveAgentConversation(id: string): Promise<ActiveAgentConversation | undefined>;
+  getActiveConversationByInstagramUser(instagramUserId: string, accountId: string): Promise<ActiveAgentConversation | undefined>;
+  getActiveConversationsByAgent(agentId: string): Promise<ActiveAgentConversation[]>;
+  createActiveAgentConversation(conversation: InsertActiveAgentConversation): Promise<ActiveAgentConversation>;
+  updateActiveAgentConversation(id: string, updates: Partial<ActiveAgentConversation>): Promise<ActiveAgentConversation | undefined>;
+  deactivateAgentConversation(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -532,6 +543,65 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMemory(id: string): Promise<boolean> {
     const result = await db.delete(agentMemory).where(eq(agentMemory.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Active Agent Conversations (for flow-triggered agents)
+  async getActiveAgentConversation(id: string): Promise<ActiveAgentConversation | undefined> {
+    const [conversation] = await db.select().from(activeAgentConversations).where(eq(activeAgentConversations.id, id));
+    return conversation || undefined;
+  }
+
+  async getActiveConversationByInstagramUser(instagramUserId: string, accountId: string): Promise<ActiveAgentConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(activeAgentConversations)
+      .where(
+        and(
+          eq(activeAgentConversations.instagramUserId, instagramUserId),
+          eq(activeAgentConversations.accountId, accountId),
+          eq(activeAgentConversations.isActive, true)
+        )
+      )
+      .orderBy(desc(activeAgentConversations.lastMessageAt));
+    return conversation || undefined;
+  }
+
+  async getActiveConversationsByAgent(agentId: string): Promise<ActiveAgentConversation[]> {
+    return await db
+      .select()
+      .from(activeAgentConversations)
+      .where(
+        and(
+          eq(activeAgentConversations.agentId, agentId),
+          eq(activeAgentConversations.isActive, true)
+        )
+      )
+      .orderBy(desc(activeAgentConversations.lastMessageAt));
+  }
+
+  async createActiveAgentConversation(insertConversation: InsertActiveAgentConversation): Promise<ActiveAgentConversation> {
+    const [conversation] = await db
+      .insert(activeAgentConversations)
+      .values(insertConversation)
+      .returning();
+    return conversation;
+  }
+
+  async updateActiveAgentConversation(id: string, updates: Partial<ActiveAgentConversation>): Promise<ActiveAgentConversation | undefined> {
+    const [conversation] = await db
+      .update(activeAgentConversations)
+      .set({ ...updates, lastMessageAt: new Date() })
+      .where(eq(activeAgentConversations.id, id))
+      .returning();
+    return conversation || undefined;
+  }
+
+  async deactivateAgentConversation(id: string): Promise<boolean> {
+    const result = await db
+      .update(activeAgentConversations)
+      .set({ isActive: false })
+      .where(eq(activeAgentConversations.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }

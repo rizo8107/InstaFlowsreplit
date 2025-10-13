@@ -19,7 +19,8 @@ import {
   Camera,
   X,
   Variable,
-  StopCircle
+  StopCircle,
+  Bot
 } from "lucide-react";
 
 const iconMap = {
@@ -39,6 +40,7 @@ const actionIconMap = {
   delay: Clock,
   set_variable: Variable,
   stop_flow: StopCircle,
+  ai_agent: Bot,
 };
 
 const triggerIconMap = {
