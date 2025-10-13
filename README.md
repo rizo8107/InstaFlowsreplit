@@ -53,6 +53,20 @@ npm run dev
 
 ## 📋 Prerequisites
 
+### System Requirements
+
+- **Node.js**: `>= 20.11.0` (required for import.meta.dirname)
+- **npm**: `>= 10.0.0`
+- **Docker**: Latest version (for containerized deployment)
+
+**Check your versions:**
+```bash
+node --version  # Should be >= v20.11.0
+npm --version
+```
+
+**If you have Node.js v18 or lower**, see [NODE_VERSION_FIX.md](NODE_VERSION_FIX.md) for upgrade instructions.
+
 ### Meta App Setup
 
 1. Go to [Meta for Developers](https://developers.facebook.com/)

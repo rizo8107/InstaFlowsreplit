@@ -13,7 +13,10 @@
 
 ### Prerequisites
 - Docker and Docker Compose installed
+- **Node.js 20.11.0+ (if building locally)**
 - Meta App credentials (Instagram App ID & Secret)
+
+**Note:** The Docker image is pre-configured with Node.js 20.11+. If you see `ERR_INVALID_ARG_TYPE` errors, see [NODE_VERSION_FIX.md](NODE_VERSION_FIX.md).
 
 ### Step 1: Clone and Configure
 

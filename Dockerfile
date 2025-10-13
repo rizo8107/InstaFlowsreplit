@@ -1,7 +1,8 @@
 # Multi-stage Dockerfile for Instagram Automation Platform
+# IMPORTANT: Requires Node.js 20.11.0 or higher for import.meta.dirname support
 
 # Stage 1: Build dependencies and frontend
-FROM node:20-alpine AS builder
+FROM node:20.11-alpine AS builder
 
 WORKDIR /app
 
@@ -15,10 +16,13 @@ RUN npm ci --include=dev
 COPY . .
 
 # Build frontend and backend
-RUN npm run build
+# Add --target=node20 to esbuild for proper import.meta.dirname support
+RUN npm run build || (echo "Build failed. Trying alternative build..." && \
+    vite build && \
+    npx esbuild server/index.ts --platform=node --target=node20 --packages=external --bundle --format=esm --outdir=dist)
 
 # Stage 2: Production image
-FROM node:20-alpine AS production
+FROM node:20.11-alpine AS production
 
 WORKDIR /app
 
