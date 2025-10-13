@@ -12,10 +12,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Ensure dev dependencies are installed for build tools (vite, esbuild, etc.)
-ENV NODE_ENV=development
-# Install dependencies (includes dev deps when NODE_ENV!=production)
-RUN npm ci
+# Make sure npm doesn't omit dev deps due to environment defaults
+RUN npm config set production false
+# Install ALL deps including dev (vite, esbuild, typescript, etc.)
+RUN npm ci --include=dev
 
 # Copy application files
 COPY . .
@@ -23,11 +23,14 @@ COPY . .
 # Build the frontend
 RUN npm run build
 
+# Prune dev dependencies for a slimmer runtime image
+RUN npm prune --omit=dev
+
 # Expose port
 EXPOSE 5000
 
 # Set environment to production
 ENV NODE_ENV=production
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application without relying on dev-only cross-env
+CMD ["node", "dist/index.js"]
