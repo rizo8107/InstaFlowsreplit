@@ -504,7 +504,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  // Webhook Subscription Status
+  // Webhook Subscription Status (auth required)
   app.get("/api/webhook-status", requireAuth, async (req, res) => {
     try {
       const { webhookService } = await import('./instagram-webhook');
@@ -520,7 +520,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
       }
       
       const firstAccount = accounts[0];
-      const status = await webhookService.checkWebhookSubscription(
+      const status = await webhookService.getWebhookStatus(
         firstAccount.instagramUserId,
         firstAccount.accessToken
       );
@@ -529,6 +529,30 @@ export function registerRoutes(app: Express, storage: IStorage) {
         ...status,
         setupInstructions: await webhookService.getSetupInstructions(),
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public webhook debugging endpoint (for testing via cURL)
+  app.get("/api/webhook-debug", async (req, res) => {
+    try {
+      const { webhookService } = await import('./instagram-webhook');
+      const { instagramUserId, accessToken } = req.query;
+
+      if (!instagramUserId || !accessToken) {
+        return res.status(400).json({
+          error: "Missing parameters",
+          usage: "GET /api/webhook-debug?instagramUserId=XXX&accessToken=YYY"
+        });
+      }
+
+      const status = await webhookService.getWebhookStatus(
+        instagramUserId as string,
+        accessToken as string
+      );
+
+      res.json(status);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -594,7 +618,7 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
   app.post("/api/webhooks/instagram", async (req: any, res) => {
     try {
-      // Validate webhook signature (CRITICAL SECURITY)
+      // 1) Validate webhook signature (CRITICAL SECURITY)
       const appSecret = process.env.INSTAGRAM_APP_SECRET || "";
       const signature = req.headers['x-hub-signature-256'] as string | undefined;
       
@@ -607,18 +631,24 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
       const { object, entry } = req.body;
 
-      console.log("Webhook received:", JSON.stringify(req.body, null, 2));
+      console.log("[IG WEBHOOK] received:", JSON.stringify(req.body, null, 2));
 
-      if (object !== "instagram") {
-        return res.sendStatus(200);
-      }
+      // 2) ACK immediately (MUST be under 20s per Instagram requirements)
+      res.sendStatus(200);
 
-      if (!entry || !Array.isArray(entry)) {
-        console.log("No entry array in webhook payload");
-        return res.sendStatus(200);
-      }
+      // 3) Process async in background (prevents Instagram timeout/retries)
+      queueMicrotask(async () => {
+        try {
+          if (object !== "instagram") {
+            return;
+          }
 
-      for (const item of entry) {
+          if (!entry || !Array.isArray(entry)) {
+            console.log("No entry array in webhook payload");
+            return;
+          }
+
+          for (const item of entry) {
         const instagramUserId = item.id;
         console.log("Processing webhook for Instagram user ID:", instagramUserId);
         
@@ -899,10 +929,13 @@ export function registerRoutes(app: Express, storage: IStorage) {
           }
         }
       }
+        } catch (error: any) {
+          console.error("[IG WEBHOOK] Background processing error:", error);
+        }
+      });
 
-      res.sendStatus(200);
     } catch (error: any) {
-      console.error("Webhook error:", error);
+      console.error("[IG WEBHOOK] Validation error:", error);
       res.sendStatus(500);
     }
   });
