@@ -1,6 +1,7 @@
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer } from "http";
+import crypto from "crypto";
 import type { IStorage } from "./storage";
 import type { InsertInstagramAccount, InsertFlow, UpdateFlow, InsertFlowExecution } from "@shared/schema";
 import { InstagramAPI } from "./instagram-api";
@@ -14,12 +15,70 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Webhook signature validation
+function validateWebhookSignature(
+  payload: string,
+  signature: string | undefined,
+  appSecret: string
+): boolean {
+  // Fail fast if app secret is not configured
+  if (!appSecret) {
+    console.error("🚨 CRITICAL: INSTAGRAM_APP_SECRET is not set!");
+    console.error("   All webhooks will be rejected until this is configured.");
+    return false;
+  }
+
+  if (!signature) {
+    console.log("❌ No X-Hub-Signature-256 header found");
+    return false;
+  }
+
+  // Remove 'sha256=' prefix
+  const signatureHash = signature.startsWith("sha256=") 
+    ? signature.substring(7) 
+    : signature;
+
+  // Generate expected signature
+  const expectedHash = crypto
+    .createHmac("sha256", appSecret)
+    .update(payload)
+    .digest("hex");
+
+  // Check lengths match before comparison to prevent timingSafeEqual crash (DoS vector)
+  if (signatureHash.length !== expectedHash.length) {
+    console.log("❌ Signature validation failed - length mismatch");
+    console.log(`   Received length: ${signatureHash.length}`);
+    console.log(`   Expected length: ${expectedHash.length}`);
+    return false;
+  }
+
+  try {
+    // Secure comparison to prevent timing attacks
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(signatureHash, 'hex'),
+      Buffer.from(expectedHash, 'hex')
+    );
+
+    if (!isValid) {
+      console.log("❌ Signature validation failed");
+      console.log(`   Received: ${signatureHash.substring(0, 20)}...`);
+      console.log(`   Expected: ${expectedHash.substring(0, 20)}...`);
+    }
+
+    return isValid;
+  } catch (error) {
+    // Catch any remaining edge cases (invalid hex, etc.)
+    console.error("❌ Signature validation error:", error instanceof Error ? error.message : "Unknown error");
+    return false;
+  }
+}
+
 export function registerRoutes(app: Express, storage: IStorage) {
   // Health check endpoint (for Docker/Kubernetes)
   app.get("/api/health", async (req, res) => {
     try {
-      // Check database connection
-      const users = await storage.getAllUsers();
+      // Check database connection by querying a simple table
+      await storage.getAllTemplates();
       res.status(200).json({ 
         status: "healthy", 
         timestamp: new Date().toISOString(),
@@ -533,8 +592,19 @@ export function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
-  app.post("/api/webhooks/instagram", async (req, res) => {
+  app.post("/api/webhooks/instagram", async (req: any, res) => {
     try {
+      // Validate webhook signature (CRITICAL SECURITY)
+      const appSecret = process.env.INSTAGRAM_APP_SECRET || "";
+      const signature = req.headers['x-hub-signature-256'] as string | undefined;
+      
+      if (!validateWebhookSignature(req.rawBody || JSON.stringify(req.body), signature, appSecret)) {
+        console.error("🚨 SECURITY: Invalid webhook signature - possible forged request!");
+        return res.sendStatus(403);
+      }
+
+      console.log("✅ Webhook signature validated");
+
       const { object, entry } = req.body;
 
       console.log("Webhook received:", JSON.stringify(req.body, null, 2));

@@ -6,6 +6,15 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 
 const app = express();
+
+// Capture raw body for webhook signature validation (before JSON parsing)
+app.use('/api/webhooks', express.json({
+  verify: (req: any, res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
+
+// Regular JSON parsing for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
