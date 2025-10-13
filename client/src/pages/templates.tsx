@@ -45,7 +45,7 @@ export default function Templates() {
         accountId: data.accountId, 
         name: data.name 
       });
-      return response;
+      return response.json();
     },
     onSuccess: (flow: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/flows"] });
@@ -54,6 +54,8 @@ export default function Templates() {
         description: "Your new flow has been created successfully",
       });
       setUseDialogOpen(false);
+      setSelectedAccountId("");
+      setFlowName("");
       setLocation(`/flows/${flow.id}`);
     },
     onError: () => {
