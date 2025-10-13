@@ -14,13 +14,26 @@ import {
   type InsertContact,
   type User,
   type InsertUser,
+  type Agent,
+  type InsertAgent,
+  type UpdateAgent,
+  type Conversation,
+  type InsertConversation,
+  type Message,
+  type InsertMessage,
+  type AgentMemory,
+  type InsertAgentMemory,
   instagramAccounts,
   flows,
   flowExecutions,
   webhookEvents,
   flowTemplates,
   contacts,
-  users
+  users,
+  agents,
+  conversations,
+  messages,
+  agentMemory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -89,6 +102,32 @@ export interface IStorage {
   upsertContact(accountId: string, instagramUserId: string, username?: string): Promise<Contact>;
   updateContact(id: string, updates: Partial<Contact>): Promise<Contact | undefined>;
   deleteContact(id: string): Promise<boolean>;
+
+  // AI Agents
+  getAgent(id: string): Promise<Agent | undefined>;
+  getAgentsByUser(userId: string): Promise<Agent[]>;
+  createAgent(agent: InsertAgent): Promise<Agent>;
+  updateAgent(id: string, updates: UpdateAgent): Promise<Agent | undefined>;
+  deleteAgent(id: string): Promise<boolean>;
+
+  // Conversations
+  getConversation(id: string): Promise<Conversation | undefined>;
+  getConversationsByAgent(agentId: string): Promise<Conversation[]>;
+  getConversationsByUser(userId: string): Promise<Conversation[]>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: string): Promise<boolean>;
+
+  // Messages
+  getMessage(id: string): Promise<Message | undefined>;
+  getMessagesByConversation(conversationId: string): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+
+  // Agent Memory
+  getMemory(id: string): Promise<AgentMemory | undefined>;
+  getMemoryByAgent(agentId: string, limit?: number): Promise<AgentMemory[]>;
+  createMemory(memory: InsertAgentMemory): Promise<AgentMemory>;
+  deleteMemory(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -380,6 +419,120 @@ export class DatabaseStorage implements IStorage {
       instagramUserId,
       username: username || instagramUserId,
     });
+  }
+
+  // AI Agents
+  async getAgent(id: string): Promise<Agent | undefined> {
+    const [agent] = await db.select().from(agents).where(eq(agents.id, id));
+    return agent || undefined;
+  }
+
+  async getAgentsByUser(userId: string): Promise<Agent[]> {
+    return await db.select().from(agents).where(eq(agents.userId, userId)).orderBy(desc(agents.createdAt));
+  }
+
+  async createAgent(insertAgent: InsertAgent): Promise<Agent> {
+    const [agent] = await db
+      .insert(agents)
+      .values(insertAgent)
+      .returning();
+    return agent;
+  }
+
+  async updateAgent(id: string, updates: UpdateAgent): Promise<Agent | undefined> {
+    const [agent] = await db
+      .update(agents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(agents.id, id))
+      .returning();
+    return agent || undefined;
+  }
+
+  async deleteAgent(id: string): Promise<boolean> {
+    const result = await db.delete(agents).where(eq(agents.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Conversations
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conversation || undefined;
+  }
+
+  async getConversationsByAgent(agentId: string): Promise<Conversation[]> {
+    return await db.select().from(conversations).where(eq(conversations.agentId, agentId)).orderBy(desc(conversations.updatedAt));
+  }
+
+  async getConversationsByUser(userId: string): Promise<Conversation[]> {
+    return await db.select().from(conversations).where(eq(conversations.userId, userId)).orderBy(desc(conversations.updatedAt));
+  }
+
+  async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
+    const [conversation] = await db
+      .insert(conversations)
+      .values(insertConversation)
+      .returning();
+    return conversation;
+  }
+
+  async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .update(conversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(conversations.id, id))
+      .returning();
+    return conversation || undefined;
+  }
+
+  async deleteConversation(id: string): Promise<boolean> {
+    const result = await db.delete(conversations).where(eq(conversations.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Messages
+  async getMessage(id: string): Promise<Message | undefined> {
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message || undefined;
+  }
+
+  async getMessagesByConversation(conversationId: string): Promise<Message[]> {
+    return await db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.createdAt);
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await db
+      .insert(messages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
+
+  // Agent Memory
+  async getMemory(id: string): Promise<AgentMemory | undefined> {
+    const [memory] = await db.select().from(agentMemory).where(eq(agentMemory.id, id));
+    return memory || undefined;
+  }
+
+  async getMemoryByAgent(agentId: string, limit: number = 50): Promise<AgentMemory[]> {
+    return await db
+      .select()
+      .from(agentMemory)
+      .where(eq(agentMemory.agentId, agentId))
+      .orderBy(desc(agentMemory.createdAt))
+      .limit(limit);
+  }
+
+  async createMemory(insertMemory: InsertAgentMemory): Promise<AgentMemory> {
+    const [memory] = await db
+      .insert(agentMemory)
+      .values(insertMemory)
+      .returning();
+    return memory;
+  }
+
+  async deleteMemory(id: string): Promise<boolean> {
+    const result = await db.delete(agentMemory).where(eq(agentMemory.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
