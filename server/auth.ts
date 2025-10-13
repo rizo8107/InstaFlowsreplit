@@ -61,9 +61,18 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  // Instagram Business Login OAuth Routes
+  // Instagram Business Login OAuth Routes - only available in development
   // Step 1: Redirect to Instagram authorization
   app.get("/api/auth/instagram", (req, res) => {
+    // Block OAuth flow in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log("🚫 Instagram OAuth attempt blocked - endpoint disabled in production");
+      return res.status(403).json({ 
+        error: "Instagram OAuth is disabled in production",
+        message: "Please use manual account connection"
+      });
+    }
+
     if (!req.isAuthenticated()) {
       return res.status(401).send("Must be logged in to connect Instagram");
     }
@@ -149,9 +158,25 @@ export function setupAuth(app: Express) {
     res.json(safeUser);
   });
 
-  // Step 2: Handle Instagram callback and exchange code for tokens
+  // Check if OAuth and registration are available (based on environment)
+  app.get("/api/auth/config", (req, res) => {
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    res.json({
+      oauthEnabled: isDevelopment,
+      registrationEnabled: isDevelopment,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // Step 2: Handle Instagram callback and exchange code for tokens - only available in development
   app.get("/api/auth/instagram/callback", async (req, res) => {
     try {
+      // Block OAuth callback in production
+      if (process.env.NODE_ENV === 'production') {
+        console.log("🚫 Instagram OAuth callback blocked - endpoint disabled in production");
+        return res.redirect("/accounts?error=oauth_disabled");
+      }
+
       if (!req.isAuthenticated()) {
         return res.redirect("/auth?error=not_logged_in");
       }

@@ -21,6 +21,12 @@ The platform features an intuitive interface with a visual drag-and-drop flow bu
 ### Technical Implementations
 The application is a full-stack TypeScript project, utilizing an Express.js backend and a React frontend. React with Wouter handles routing, while TanStack Query manages data fetching. Tailwind CSS is used for styling. User authentication is managed by Passport.js with session management via `express-session`, supporting Instagram Business Login OAuth for account connection. Password hashing is done with scrypt.
 
+**Environment-Specific Security:**
+- Registration endpoint (`/api/register`) is disabled in production (`NODE_ENV=production`) for security
+- Instagram OAuth endpoints (`/api/auth/instagram`, `/api/auth/instagram/callback`) are disabled in production
+- Frontend conditionally shows/hides OAuth and registration UI based on `/api/auth/config` endpoint
+- In production, users must use manual account connection with access tokens only
+
 ### Feature Specifications
 - **Visual Flow Builder**: Allows users to create automation workflows using custom node types (Trigger, Condition, Action) with a drag-and-drop interface.
 - **Multi-Account Support**: Manages multiple Instagram accounts via Graph API tokens.

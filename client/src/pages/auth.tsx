@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,14 @@ export default function AuthPage() {
   const { login, register, loginError, registerError } = useAuth();
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
+
+  const { data: authConfig } = useQuery<{
+    oauthEnabled: boolean;
+    registrationEnabled: boolean;
+    environment: string;
+  }>({
+    queryKey: ["/api/auth/config"],
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -104,19 +113,21 @@ export default function AuthPage() {
             >
               {isLoading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setEmail("");
-                setPassword("");
-              }}
-              data-testid="button-toggle-mode"
-            >
-              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-            </Button>
+            {authConfig?.registrationEnabled && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setEmail("");
+                  setPassword("");
+                }}
+                data-testid="button-toggle-mode"
+              >
+                {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+              </Button>
+            )}
           </CardFooter>
         </form>
       </Card>
