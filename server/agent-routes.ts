@@ -344,4 +344,73 @@ export function registerAgentRoutes(app: Express, storage: IStorage) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ===== Agent Templates =====
+
+  // Get all agent templates
+  app.get("/api/agent-templates", requireAuth, async (req, res) => {
+    try {
+      const templates = await storage.getAllAgentTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get agent templates by category
+  app.get("/api/agent-templates/category/:category", requireAuth, async (req, res) => {
+    try {
+      const templates = await storage.getAgentTemplatesByCategory(req.params.category);
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single agent template
+  app.get("/api/agent-templates/:id", requireAuth, async (req, res) => {
+    try {
+      const template = await storage.getAgentTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create agent from template
+  app.post("/api/agents/from-template/:templateId", requireAuth, async (req, res) => {
+    try {
+      const template = await storage.getAgentTemplate(req.params.templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      // Create agent from template
+      const agentData: InsertAgent = {
+        userId: req.user!.id,
+        name: req.body.name || template.name,
+        description: template.description,
+        model: template.model,
+        systemPrompt: template.systemPrompt,
+        temperature: template.temperature,
+        maxTokens: template.maxTokens,
+        enableMemory: template.enableMemory,
+        enableTools: template.enableTools,
+        tools: template.tools,
+        isActive: true,
+      };
+
+      const agent = await storage.createAgent(agentData);
+      
+      // Increment template use count
+      await storage.incrementAgentTemplateUseCount(template.id);
+
+      res.json(agent);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
