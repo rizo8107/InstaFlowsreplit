@@ -60,34 +60,34 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Monitor your Instagram automation workflows</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Monitor your Instagram automation workflows</p>
         </div>
         <Link href="/flows/new">
-          <Button className="gap-2" data-testid="button-create-flow">
+          <Button className="gap-2 w-full sm:w-auto" data-testid="button-create-flow">
             <Plus className="w-4 h-4" />
-            Create Flow
+            <span className="sm:inline">Create Flow</span>
           </Button>
         </Link>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat) => (
           <Card key={stat.title} className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between gap-4 p-6">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{stat.title}</p>
-                <p className="text-2xl font-bold" data-testid={`stat-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 sm:gap-4 p-3 sm:p-6">
+              <div className="space-y-1 min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.title}</p>
+                <p className="text-lg sm:text-2xl font-bold truncate" data-testid={`stat-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
                   {accountsLoading || flowsLoading || executionsLoading ? "..." : stat.value}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-md ${stat.bgColor} flex items-center justify-center`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md ${stat.bgColor} flex items-center justify-center flex-shrink-0`}>
+                <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
               </div>
             </CardHeader>
           </Card>
@@ -95,22 +95,22 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Flows & Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Recent Flows */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4 p-6">
-            <div>
-              <CardTitle>Recent Flows</CardTitle>
-              <CardDescription>Your latest automation workflows</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 sm:gap-4 p-4 sm:p-6">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">Recent Flows</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Your latest automation workflows</CardDescription>
             </div>
             <Link href="/flows">
-              <Button variant="ghost" size="sm" className="gap-1" data-testid="link-view-all-flows">
-                View All
+              <Button variant="ghost" size="sm" className="gap-1 flex-shrink-0" data-testid="link-view-all-flows">
+                <span className="hidden sm:inline">View All</span>
                 <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
           </CardHeader>
-          <CardContent className="p-6 pt-0 space-y-3">
+          <CardContent className="p-4 sm:p-6 sm:pt-0 space-y-3">
             {flowsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -156,19 +156,19 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4 p-6">
-            <div>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest flow executions</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 sm:gap-4 p-4 sm:p-6">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">Recent Activity</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Latest flow executions</CardDescription>
             </div>
             <Link href="/activity">
-              <Button variant="ghost" size="sm" className="gap-1" data-testid="link-view-all-activity">
-                View All
+              <Button variant="ghost" size="sm" className="gap-1 flex-shrink-0" data-testid="link-view-all-activity">
+                <span className="hidden sm:inline">View All</span>
                 <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
           </CardHeader>
-          <CardContent className="p-6 pt-0 space-y-3">
+          <CardContent className="p-4 sm:p-6 sm:pt-0 space-y-3">
             {executionsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (

@@ -79,16 +79,16 @@ export default function ActivityPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Activity Log</h1>
-        <p className="text-sm text-muted-foreground">Track flow executions and incoming webhook events</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Activity Log</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Track flow executions and incoming webhook events</p>
       </div>
 
       {/* Search Filter */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input

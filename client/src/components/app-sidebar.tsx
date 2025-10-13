@@ -73,14 +73,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center">
-            <Instagram className="w-6 h-6 text-white" />
+      <SidebarHeader className="p-3 sm:p-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center flex-shrink-0">
+            <Instagram className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-foreground">InstaFlow</h2>
-            <p className="text-xs text-muted-foreground">Automation Platform</p>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-semibold text-foreground truncate">InstaFlow</h2>
+            <p className="text-xs text-muted-foreground truncate">Automation Platform</p>
           </div>
         </div>
       </SidebarHeader>
@@ -103,10 +103,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 space-y-2">
+      <SidebarFooter className="p-3 sm:p-4 space-y-2">
         {user && (
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50">
-            <Avatar className="h-7 w-7">
+            <Avatar className="h-6 w-6 sm:h-7 sm:w-7 flex-shrink-0">
               <AvatarFallback className="text-xs">
                 {user.email.charAt(0).toUpperCase()}
               </AvatarFallback>

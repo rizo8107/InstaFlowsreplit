@@ -102,19 +102,19 @@ export default function Contacts() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-[#E4405F] to-[#833AB4] text-transparent bg-clip-text">
+          <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-[#E4405F] to-[#833AB4] text-transparent bg-clip-text">
             Contacts
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-xs sm:text-base text-muted-foreground mt-2">
             Manage Instagram user contacts with their user IDs
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" data-testid="button-add-contact">
+            <Button className="gap-2 w-full sm:w-auto" data-testid="button-add-contact">
               <Plus className="w-4 h-4" />
               Add Contact
             </Button>

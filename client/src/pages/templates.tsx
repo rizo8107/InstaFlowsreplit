@@ -112,15 +112,15 @@ export default function Templates() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Flow Templates</h1>
-        <p className="text-muted-foreground">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-3xl font-bold mb-2">Flow Templates</h1>
+        <p className="text-xs sm:text-base text-muted-foreground">
           Get started quickly with pre-built automation templates
         </p>
       </div>
 
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-4 sm:mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -133,11 +133,11 @@ export default function Templates() {
         </div>
       </div>
 
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-6">
-        <TabsList>
-          <TabsTrigger value="all" data-testid="tab-all">All Templates</TabsTrigger>
+      <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-4 sm:mb-6">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="all" data-testid="tab-all" className="text-xs sm:text-sm">All Templates</TabsTrigger>
           {categories.map((category) => (
-            <TabsTrigger key={category} value={category} data-testid={`tab-${category}`}>
+            <TabsTrigger key={category} value={category} data-testid={`tab-${category}`} className="text-xs sm:text-sm">
               {category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
             </TabsTrigger>
           ))}
@@ -145,7 +145,7 @@ export default function Templates() {
       </Tabs>
 
       {templatesLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i} className="animate-pulse">
               <div className="p-6 space-y-3">

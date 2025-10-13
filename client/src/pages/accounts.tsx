@@ -222,16 +222,16 @@ export default function Accounts() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Instagram Accounts</h1>
-          <p className="text-sm text-muted-foreground">Manage connected Instagram accounts</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Instagram Accounts</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Manage connected Instagram accounts</p>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2" data-testid="button-add-account">
+            <Button className="gap-2 w-full sm:w-auto" data-testid="button-add-account">
               <Plus className="w-4 h-4" />
               Connect Account
             </Button>
