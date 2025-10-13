@@ -17,6 +17,8 @@ import ActivityPage from "@/pages/activity";
 import Templates from "@/pages/templates";
 import WebhookSetup from "@/pages/webhook-setup";
 import Contacts from "@/pages/contacts";
+import AgentsPage from "@/pages/agents";
+import AgentChatPage from "@/pages/agent-chat";
 import AuthPage from "@/pages/auth";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
@@ -79,6 +81,16 @@ function Router() {
       <Route path="/contacts">
         <ProtectedRoute>
           <Contacts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/agents">
+        <ProtectedRoute>
+          <AgentsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/agents/:id/chat">
+        <ProtectedRoute>
+          <AgentChatPage />
         </ProtectedRoute>
       </Route>
       <Route path="/terms">
