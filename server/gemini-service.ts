@@ -88,10 +88,53 @@ export class GeminiService {
       }
     });
 
+    // Send Instagram DM tool
+    this.tools.set("send_instagram_dm", {
+      name: "send_instagram_dm",
+      description: "Send a direct message on Instagram to a specific user",
+      parameters: {
+        type: "object",
+        properties: {
+          accountId: {
+            type: "string",
+            description: "The Instagram account ID to send from (use contacts to find)"
+          },
+          recipientId: {
+            type: "string",
+            description: "The Instagram user ID of the recipient"
+          },
+          message: {
+            type: "string",
+            description: "The message text to send"
+          }
+        },
+        required: ["accountId", "recipientId", "message"]
+      },
+      execute: async (params: { accountId: string; recipientId: string; message: string }, context: { userId: string }) => {
+        try {
+          // Get the Instagram account
+          const accounts = await storage.getUserAccounts(context.userId);
+          const account = accounts.find(a => a.id === params.accountId);
+          
+          if (!account) {
+            return `Instagram account not found. Available accounts: ${accounts.map(a => `${a.username} (${a.id})`).join(', ')}`;
+          }
+
+          // Send the DM
+          const api = new InstagramAPI(account.accessToken);
+          await api.sendDirectMessage(params.recipientId, params.message);
+
+          return `Successfully sent DM to user ${params.recipientId} from account @${account.username}: "${params.message}"`;
+        } catch (error: any) {
+          return `Error sending Instagram DM: ${error.message}`;
+        }
+      }
+    });
+
     // Execute flow tool
     this.tools.set("execute_flow", {
       name: "execute_flow",
-      description: "Execute an Instagram automation flow by name",
+      description: "Execute an Instagram automation flow by name to trigger automated conversations",
       parameters: {
         type: "object",
         properties: {
@@ -101,7 +144,7 @@ export class GeminiService {
           },
           testData: {
             type: "object",
-            description: "Test data to trigger the flow (e.g., {username: 'test', message_text: 'hello'})"
+            description: "Test data to trigger the flow (e.g., {username: 'test', message_text: 'hello', instagram_user_id: '123'})"
           }
         },
         required: ["flowName"]
@@ -143,10 +186,49 @@ export class GeminiService {
           );
 
           return result.success 
-            ? `Flow "${params.flowName}" executed successfully.`
+            ? `Flow "${params.flowName}" executed successfully. The automated conversation has been triggered.`
             : `Flow "${params.flowName}" failed: ${result.error || "Unknown error"}`;
         } catch (error: any) {
           return `Error executing flow: ${error.message}`;
+        }
+      }
+    });
+
+    // Get Instagram contacts tool
+    this.tools.set("get_instagram_contacts", {
+      name: "get_instagram_contacts",
+      description: "Get list of Instagram contacts/users from the system to find user IDs for sending messages",
+      parameters: {
+        type: "object",
+        properties: {
+          accountId: {
+            type: "string",
+            description: "Optional: Filter contacts by Instagram account ID"
+          }
+        }
+      },
+      execute: async (params: { accountId?: string }, context: { userId: string }) => {
+        try {
+          const accounts = await storage.getUserAccounts(context.userId);
+          const accountIds = accounts.map(a => a.id);
+          
+          if (params.accountId && !accountIds.includes(params.accountId)) {
+            return `Account not found. Available accounts: ${accounts.map(a => `${a.username} (${a.id})`).join(', ')}`;
+          }
+
+          const contacts = params.accountId
+            ? await storage.getContactsByAccount(params.accountId)
+            : await Promise.all(accountIds.map(id => storage.getContactsByAccount(id))).then(all => all.flat());
+
+          if (contacts.length === 0) {
+            return "No contacts found. Contacts are created automatically when users interact with your Instagram flows.";
+          }
+
+          return contacts.map(c => 
+            `@${c.username} (ID: ${c.instagramUserId}, Account: ${c.accountId})`
+          ).join('\n');
+        } catch (error: any) {
+          return `Error getting contacts: ${error.message}`;
         }
       }
     });
