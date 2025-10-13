@@ -1,0 +1,47 @@
+# Node modules
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Development files
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+
+# Build output (will be created during build)
+dist
+client/dist
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+*.test.js
+*.spec.js
+__tests__
+
+# Replit specific
+.replit
+replit.nix
+.config
+.cache
+.upm
+
+# Temporary files
+tmp
+temp
+*.log

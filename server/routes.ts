@@ -15,6 +15,26 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function registerRoutes(app: Express, storage: IStorage) {
+  // Health check endpoint (for Docker/Kubernetes)
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Check database connection
+      const users = await storage.getAllUsers();
+      res.status(200).json({ 
+        status: "healthy", 
+        timestamp: new Date().toISOString(),
+        database: "connected"
+      });
+    } catch (error) {
+      res.status(503).json({ 
+        status: "unhealthy", 
+        timestamp: new Date().toISOString(),
+        database: "disconnected",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Instagram Accounts
   app.get("/api/accounts", requireAuth, async (req, res) => {
     try {
