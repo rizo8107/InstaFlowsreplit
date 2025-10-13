@@ -103,7 +103,17 @@ export function setupAuth(app: Express) {
     done(null, user);
   });
 
+  // Registration endpoint - only available in development mode
   app.post("/api/register", async (req, res, next) => {
+    // Block registration in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log("🚫 Registration attempt blocked - endpoint disabled in production");
+      return res.status(403).json({ 
+        error: "Registration is disabled in production",
+        message: "Please contact an administrator for account access"
+      });
+    }
+
     const existingUser = await storage.getUserByEmail(req.body.email);
     if (existingUser) {
       return res.status(400).send("Email already exists");
