@@ -1,0 +1,59 @@
+# Easypanel Configuration
+# Import this file in Easypanel to deploy with one click
+
+name: instagram-automation-platform
+version: 1.0.0
+
+services:
+  app:
+    image: 
+      type: dockerfile
+      path: ./Dockerfile
+    ports:
+      - port: 5000
+        protocol: http
+        published: 5000
+    environment:
+      - name: NODE_ENV
+        value: production
+      - name: PORT
+        value: "5000"
+      - name: DATABASE_URL
+        value: ${{ services.postgres.DATABASE_URL }}
+      - name: SESSION_SECRET
+        value: ${{ secrets.SESSION_SECRET }}
+      - name: INSTAGRAM_APP_ID
+        value: ${{ secrets.INSTAGRAM_APP_ID }}
+      - name: INSTAGRAM_APP_SECRET
+        value: ${{ secrets.INSTAGRAM_APP_SECRET }}
+      - name: INSTAGRAM_WEBHOOK_VERIFY_TOKEN
+        value: zenthra
+    depends_on:
+      - postgres
+    deploy:
+      replicas: 1
+      
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - name: POSTGRES_DB
+        value: instagram_automation
+      - name: POSTGRES_USER
+        value: postgres
+      - name: POSTGRES_PASSWORD
+        value: ${{ secrets.POSTGRES_PASSWORD }}
+    volumes:
+      - name: postgres-data
+        mountPath: /var/lib/postgresql/data
+    ports:
+      - port: 5432
+        published: 5432
+
+volumes:
+  postgres-data:
+    size: 10Gi
+
+domains:
+  - domain: your-domain.com
+    service: app
+    port: 5000
