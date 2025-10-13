@@ -13,8 +13,9 @@
         "projectName": "instaflow",
         "serviceName": "app",
         "source": {
-          "type": "image",
-          "image": "yourdockerhub/instaflow:latest"
+          "type": "dockerfile",
+          "dockerfilePath": "./Dockerfile",
+          "context": "."
         },
         "domains": [
           {
@@ -25,7 +26,11 @@
         "env": [
           {
             "key": "DATABASE_URL",
-            "value": "$$ref(instaflow_postgres.DATABASE_URL)"
+            "value": "$$ref(postgres.DATABASE_URL)"
+          },
+          {
+            "key": "PORT",
+            "value": "5000"
           },
           {
             "key": "SESSION_SECRET",
