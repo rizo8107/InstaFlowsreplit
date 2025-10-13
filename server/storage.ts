@@ -17,6 +17,8 @@ import {
   type Agent,
   type InsertAgent,
   type UpdateAgent,
+  type AgentTemplate,
+  type InsertAgentTemplate,
   type Conversation,
   type InsertConversation,
   type Message,
@@ -33,6 +35,7 @@ import {
   contacts,
   users,
   agents,
+  agentTemplates,
   conversations,
   messages,
   agentMemory,
@@ -112,6 +115,13 @@ export interface IStorage {
   createAgent(agent: InsertAgent): Promise<Agent>;
   updateAgent(id: string, updates: UpdateAgent): Promise<Agent | undefined>;
   deleteAgent(id: string): Promise<boolean>;
+
+  // Agent Templates
+  getAgentTemplate(id: string): Promise<AgentTemplate | undefined>;
+  getAllAgentTemplates(): Promise<AgentTemplate[]>;
+  getAgentTemplatesByCategory(category: string): Promise<AgentTemplate[]>;
+  createAgentTemplate(template: InsertAgentTemplate): Promise<AgentTemplate>;
+  incrementAgentTemplateUseCount(id: string): Promise<boolean>;
 
   // Conversations
   getConversation(id: string): Promise<Conversation | undefined>;
@@ -462,6 +472,42 @@ export class DatabaseStorage implements IStorage {
   async deleteAgent(id: string): Promise<boolean> {
     const result = await db.delete(agents).where(eq(agents.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Agent Templates
+  async getAgentTemplate(id: string): Promise<AgentTemplate | undefined> {
+    const [template] = await db.select().from(agentTemplates).where(eq(agentTemplates.id, id));
+    return template || undefined;
+  }
+
+  async getAllAgentTemplates(): Promise<AgentTemplate[]> {
+    return await db.select().from(agentTemplates).orderBy(desc(agentTemplates.createdAt));
+  }
+
+  async getAgentTemplatesByCategory(category: string): Promise<AgentTemplate[]> {
+    return await db.select().from(agentTemplates)
+      .where(eq(agentTemplates.category, category))
+      .orderBy(desc(agentTemplates.createdAt));
+  }
+
+  async createAgentTemplate(insertTemplate: InsertAgentTemplate): Promise<AgentTemplate> {
+    const [template] = await db
+      .insert(agentTemplates)
+      .values(insertTemplate)
+      .returning();
+    return template;
+  }
+
+  async incrementAgentTemplateUseCount(id: string): Promise<boolean> {
+    const template = await this.getAgentTemplate(id);
+    if (!template) return false;
+    
+    const newCount = String(Number(template.useCount) + 1);
+    await db
+      .update(agentTemplates)
+      .set({ useCount: newCount })
+      .where(eq(agentTemplates.id, id));
+    return true;
   }
 
   // Conversations
