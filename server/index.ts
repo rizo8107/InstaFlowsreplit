@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -7,17 +6,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 
 const app = express();
-
-// Capture raw body for webhook signature validation (must be BEFORE general express.json())
-app.use(express.json({
-  verify: (req: any, res, buf) => {
-    // Only capture raw body for webhook routes
-    if (req.path.startsWith('/api/webhooks')) {
-      req.rawBody = buf.toString('utf8');
-    }
-  }
-}));
-
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Setup authentication
@@ -87,6 +76,7 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
+    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });

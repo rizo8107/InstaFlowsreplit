@@ -143,14 +143,14 @@ export default function Flows() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Flows</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Manage your automation workflows</p>
+          <h1 className="text-2xl font-bold text-foreground">Flows</h1>
+          <p className="text-sm text-muted-foreground">Manage your automation workflows</p>
         </div>
-        <Button className="gap-2 w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)} data-testid="button-create-flow">
+        <Button className="gap-2" onClick={() => setCreateDialogOpen(true)} data-testid="button-create-flow">
           <Plus className="w-4 h-4" />
           Create Flow
         </Button>
@@ -158,10 +158,10 @@ export default function Flows() {
 
       {/* Flows Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="h-48 animate-pulse">
-              <div className="p-4 sm:p-6 space-y-3">
+              <div className="p-6 space-y-3">
                 <div className="h-6 bg-muted rounded" />
                 <div className="h-4 bg-muted rounded w-2/3" />
                 <div className="h-20 bg-muted rounded" />
@@ -170,7 +170,7 @@ export default function Flows() {
           ))}
         </div>
       ) : flows && flows.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {flows.map((flow) => (
             <Card key={flow.id} className="hover-elevate" data-testid={`flow-card-${flow.id}`}>
               <CardHeader className="p-6">

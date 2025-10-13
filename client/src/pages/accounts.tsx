@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Instagram, Trash2, Power, PowerOff, ExternalLink, Webhook, Copy, Check, RefreshCw, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Plus, Instagram, Trash2, Power, PowerOff, ExternalLink, Webhook, Copy, Check } from "lucide-react";
 import type { InstagramAccount } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -28,50 +28,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useState } from "react";
 
 export default function Accounts() {
   const { toast } = useToast();
-  const [location] = useLocation();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
-  const [webhookStatus, setWebhookStatus] = useState<any>(null);
-  const [webhookToken, setWebhookToken] = useState<string>("");
-  const [copiedToken, setCopiedToken] = useState(false);
-
-  // Handle OAuth callback messages
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const success = params.get("success");
-    const error = params.get("error");
-
-    if (success === "true") {
-      toast({
-        title: "Success!",
-        description: "Instagram account connected successfully via OAuth",
-      });
-      // Clear URL params
-      window.history.replaceState({}, '', '/accounts');
-    } else if (error) {
-      const errorMessages: Record<string, string> = {
-        oauth_cancelled: "OAuth authorization was cancelled.",
-        not_logged_in: "You must be logged in to connect Instagram.",
-        no_code: "No authorization code received from Instagram.",
-        config_missing: "Instagram app credentials not configured.",
-        token_exchange_failed: "Failed to exchange authorization code for access token.",
-        profile_fetch_failed: "Failed to fetch Instagram profile information.",
-        connection_failed: "Failed to connect Instagram account. Please try again.",
-      };
-      toast({
-        title: "Connection Failed",
-        description: errorMessages[error] || "An unknown error occurred.",
-        variant: "destructive",
-      });
-      // Clear URL params
-      window.history.replaceState({}, '', '/accounts');
-    }
-  }, [location, toast]);
   const [newAccount, setNewAccount] = useState({
     username: "",
     instagramUserId: "",
@@ -143,103 +105,17 @@ export default function Accounts() {
     },
   });
 
-  const testWebhookMutation = useMutation({
-    mutationFn: async () => {
-      setWebhookStatus(null);
-      const response = await fetch("/api/webhook-status");
-      if (!response.ok) throw new Error("Failed to check webhook status");
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setWebhookStatus(data);
-      toast({
-        title: "Webhook Status Checked",
-        description: data.configured 
-          ? "Webhooks are properly configured!" 
-          : "Webhook setup incomplete - check details below",
-        variant: data.configured ? "default" : "destructive",
-      });
-    },
-    onError: () => {
-      setWebhookStatus(null);
-      toast({
-        title: "Error",
-        description: "Failed to check webhook status.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const { data: tokenData } = useQuery<{
-    token: string | null;
-    exists: boolean;
-    source: 'database' | 'environment' | 'none';
-  }>({
-    queryKey: ["/api/webhook-token"],
-  });
-
-  const { data: authConfig } = useQuery<{
-    oauthEnabled: boolean;
-    registrationEnabled: boolean;
-    environment: string;
-  }>({
-    queryKey: ["/api/auth/config"],
-  });
-
-  const generateTokenMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/webhook-token/generate", { method: "POST" });
-      if (!response.ok) throw new Error("Failed to generate token");
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setWebhookToken(data.token);
-      toast({
-        title: "Token Generated",
-        description: "New webhook verify token generated. Click 'Save' to store it.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to generate token.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const saveTokenMutation = useMutation({
-    mutationFn: async (token: string) => {
-      const response = await apiRequest("POST", "/api/webhook-token/set", { token });
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/webhook-token"] });
-      toast({
-        title: "Token Saved",
-        description: "Webhook verify token saved successfully.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to save token.",
-        variant: "destructive",
-      });
-    },
-  });
-
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Instagram Accounts</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Manage connected Instagram accounts</p>
+          <h1 className="text-2xl font-bold text-foreground">Instagram Accounts</h1>
+          <p className="text-sm text-muted-foreground">Manage connected Instagram accounts</p>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 w-full sm:w-auto" data-testid="button-add-account">
+            <Button className="gap-2" data-testid="button-add-account">
               <Plus className="w-4 h-4" />
               Connect Account
             </Button>
@@ -248,157 +124,59 @@ export default function Accounts() {
             <DialogHeader>
               <DialogTitle>Connect Instagram Account</DialogTitle>
               <DialogDescription>
-                {authConfig?.oauthEnabled 
-                  ? "Connect your Instagram Business account with one click using OAuth"
-                  : "Manually connect your Instagram Business account"}
+                Enter your Instagram account details and access token from the Meta for Developers console.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              {/* OAuth Button - Only in Development */}
-              {authConfig?.oauthEnabled && (
-                <>
-                  <div className="space-y-3">
-                    <Button
-                      onClick={() => {
-                        window.location.href = "/api/auth/instagram";
-                      }}
-                      className="w-full gap-2 bg-gradient-to-r from-[#E4405F] to-[#833AB4] hover:from-[#C13584] hover:to-[#6A2C91]"
-                      size="lg"
-                      data-testid="button-oauth-connect"
-                    >
-                      <Instagram className="w-5 h-5" />
-                      Connect with Instagram
-                    </Button>
-                    <p className="text-xs text-center text-muted-foreground">
-                      Requires Instagram Business or Creator account linked to a Facebook Page
-                    </p>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Or connect manually
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Manual Form - Primary in Production, Advanced in Development */}
-              {authConfig?.oauthEnabled ? (
-                <details className="space-y-4">
-                  <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
-                    Advanced: Manual Configuration
-                  </summary>
-                  <div className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Instagram Username</Label>
-                      <Input
-                        id="username"
-                        placeholder="username"
-                        value={newAccount.username}
-                        onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value })}
-                        data-testid="input-username"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="user-id">Instagram User ID</Label>
-                      <Input
-                        id="user-id"
-                        placeholder="1234567890"
-                        value={newAccount.instagramUserId}
-                        onChange={(e) => setNewAccount({ ...newAccount, instagramUserId: e.target.value })}
-                        data-testid="input-user-id"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="access-token">Access Token</Label>
-                      <Input
-                        id="access-token"
-                        type="password"
-                        placeholder="Enter access token"
-                        value={newAccount.accessToken}
-                        onChange={(e) => setNewAccount({ ...newAccount, accessToken: e.target.value })}
-                        data-testid="input-access-token"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="profile-picture">Profile Picture URL (Optional)</Label>
-                      <Input
-                        id="profile-picture"
-                        placeholder="https://..."
-                        value={newAccount.profilePicture}
-                        onChange={(e) => setNewAccount({ ...newAccount, profilePicture: e.target.value })}
-                        data-testid="input-profile-picture"
-                      />
-                    </div>
-                    <Button
-                      onClick={() => addMutation.mutate()}
-                      disabled={!newAccount.username || !newAccount.instagramUserId || !newAccount.accessToken || addMutation.isPending}
-                      className="w-full"
-                      data-testid="button-connect"
-                    >
-                      {addMutation.isPending ? "Connecting..." : "Connect Account"}
-                    </Button>
-                  </div>
-                </details>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Instagram Username</Label>
-                    <Input
-                      id="username"
-                      placeholder="username"
-                      value={newAccount.username}
-                      onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value })}
-                      data-testid="input-username"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="user-id">Instagram User ID</Label>
-                    <Input
-                      id="user-id"
-                      placeholder="1234567890"
-                      value={newAccount.instagramUserId}
-                      onChange={(e) => setNewAccount({ ...newAccount, instagramUserId: e.target.value })}
-                      data-testid="input-user-id"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="access-token">Access Token</Label>
-                    <Input
-                      id="access-token"
-                      type="password"
-                      placeholder="Enter access token"
-                      value={newAccount.accessToken}
-                      onChange={(e) => setNewAccount({ ...newAccount, accessToken: e.target.value })}
-                      data-testid="input-access-token"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-picture">Profile Picture URL (Optional)</Label>
-                    <Input
-                      id="profile-picture"
-                      placeholder="https://..."
-                      value={newAccount.profilePicture}
-                      onChange={(e) => setNewAccount({ ...newAccount, profilePicture: e.target.value })}
-                      data-testid="input-profile-picture"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => addMutation.mutate()}
-                    disabled={!newAccount.username || !newAccount.instagramUserId || !newAccount.accessToken || addMutation.isPending}
-                    className="w-full"
-                    data-testid="button-connect"
-                  >
-                    {addMutation.isPending ? "Connecting..." : "Connect Account"}
-                  </Button>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="username">Instagram Username</Label>
+                <Input
+                  id="username"
+                  placeholder="username"
+                  value={newAccount.username}
+                  onChange={(e) => setNewAccount({ ...newAccount, username: e.target.value })}
+                  data-testid="input-username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="user-id">Instagram User ID</Label>
+                <Input
+                  id="user-id"
+                  placeholder="1234567890"
+                  value={newAccount.instagramUserId}
+                  onChange={(e) => setNewAccount({ ...newAccount, instagramUserId: e.target.value })}
+                  data-testid="input-user-id"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="access-token">Access Token</Label>
+                <Input
+                  id="access-token"
+                  type="password"
+                  placeholder="Enter access token"
+                  value={newAccount.accessToken}
+                  onChange={(e) => setNewAccount({ ...newAccount, accessToken: e.target.value })}
+                  data-testid="input-access-token"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-picture">Profile Picture URL (Optional)</Label>
+                <Input
+                  id="profile-picture"
+                  placeholder="https://..."
+                  value={newAccount.profilePicture}
+                  onChange={(e) => setNewAccount({ ...newAccount, profilePicture: e.target.value })}
+                  data-testid="input-profile-picture"
+                />
+              </div>
+              <Button
+                onClick={() => addMutation.mutate()}
+                disabled={!newAccount.username || !newAccount.instagramUserId || !newAccount.accessToken || addMutation.isPending}
+                className="w-full"
+                data-testid="button-connect"
+              >
+                {addMutation.isPending ? "Connecting..." : "Connect Account"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -444,62 +222,6 @@ export default function Accounts() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Webhook Verify Token</Label>
-            <div className="flex gap-2">
-              <Input
-                value={webhookToken || tokenData?.token || ""}
-                onChange={(e) => setWebhookToken(e.target.value)}
-                type="password"
-                placeholder="Enter or generate webhook token"
-                className="font-mono text-sm"
-                data-testid="input-webhook-token"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  const token = webhookToken || tokenData?.token || "";
-                  if (token) {
-                    navigator.clipboard.writeText(token);
-                    setCopiedToken(true);
-                    setTimeout(() => setCopiedToken(false), 2000);
-                    toast({
-                      title: "Copied!",
-                      description: "Webhook token copied to clipboard",
-                    });
-                  }
-                }}
-                disabled={!webhookToken && !tokenData?.token}
-                data-testid="button-copy-token"
-              >
-                {copiedToken ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => generateTokenMutation.mutate()}
-                disabled={generateTokenMutation.isPending}
-                data-testid="button-generate-token"
-              >
-                <RefreshCw className={`w-4 h-4 ${generateTokenMutation.isPending ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button
-                onClick={() => saveTokenMutation.mutate(webhookToken || tokenData?.token || "")}
-                disabled={!webhookToken && !tokenData?.token || saveTokenMutation.isPending}
-                data-testid="button-save-token"
-              >
-                {saveTokenMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            </div>
-            {tokenData?.source && (
-              <p className="text-xs text-muted-foreground">
-                Current source: {tokenData.source}
-                {tokenData.source === 'environment' && ' (from Replit Secrets)'}
-                {tokenData.source === 'database' && ' (saved in app)'}
-              </p>
-            )}
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Setup Steps:</h4>
@@ -528,108 +250,6 @@ export default function Accounts() {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-          </div>
-
-          {/* Webhook Status Test */}
-          <div className="border-t pt-4 mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium">Connection Status</h4>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => testWebhookMutation.mutate()}
-                disabled={testWebhookMutation.isPending}
-                className="gap-2"
-                data-testid="button-test-webhook"
-              >
-                <RefreshCw className={`w-4 h-4 ${testWebhookMutation.isPending ? 'animate-spin' : ''}`} />
-                {testWebhookMutation.isPending ? 'Testing...' : 'Test Connection'}
-              </Button>
-            </div>
-
-            {webhookStatus && (
-              <div className="space-y-3" data-testid="webhook-status-results">
-                {/* Overall Status */}
-                <div 
-                  className={`p-3 rounded-lg border ${
-                    webhookStatus.configured 
-                      ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900' 
-                      : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900'
-                  }`}
-                  data-testid={webhookStatus.configured ? "status-configured" : "status-not-configured"}
-                >
-                  <div className="flex items-start gap-3">
-                    {webhookStatus.configured ? (
-                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                    )}
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium text-foreground" data-testid="text-webhook-status">
-                        {webhookStatus.configured 
-                          ? '✓ Webhooks Configured' 
-                          : 'Webhook Setup Required'}
-                      </p>
-                      <p className="text-xs text-muted-foreground" data-testid="text-webhook-message">
-                        {webhookStatus.message || webhookStatus.note || 'Webhook configuration checked'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Account Subscriptions */}
-                {webhookStatus.accountSubscriptions && webhookStatus.accountSubscriptions.length > 0 && (
-                  <div className="space-y-2" data-testid="account-subscriptions">
-                    <p className="text-xs font-medium text-muted-foreground">Account-Level Subscriptions:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {webhookStatus.accountSubscriptions.map((field: string) => (
-                        <Badge key={field} variant="secondary" className="text-xs" data-testid={`badge-account-${field}`}>
-                          {field}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* App Subscriptions */}
-                {webhookStatus.appSubscriptions && (
-                  <div className="space-y-2" data-testid="app-subscriptions">
-                    <p className="text-xs font-medium text-muted-foreground">App-Level Subscriptions:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {webhookStatus.appSubscriptions.fields?.map((field: string) => (
-                        <Badge key={field} variant="outline" className="text-xs" data-testid={`badge-app-${field}`}>
-                          {field}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Subscriptions Array (fallback) */}
-                {webhookStatus.subscriptions && webhookStatus.subscriptions.length > 0 && (
-                  <div className="space-y-2" data-testid="active-subscriptions">
-                    <p className="text-xs font-medium text-muted-foreground">Active Subscriptions:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {webhookStatus.subscriptions.map((field: string) => (
-                        <Badge key={field} variant="default" className="text-xs" data-testid={`badge-subscription-${field}`}>
-                          {field}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Display */}
-                {webhookStatus.error && (
-                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900" data-testid="webhook-error">
-                    <div className="flex items-start gap-2">
-                      <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
-                      <p className="text-xs text-red-600 dark:text-red-400" data-testid="text-error-message">{webhookStatus.error}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

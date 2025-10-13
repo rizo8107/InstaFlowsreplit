@@ -1,7 +1,6 @@
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import crypto from "crypto";
 import type { IStorage } from "./storage";
 import type { InsertInstagramAccount, InsertFlow, UpdateFlow, InsertFlowExecution } from "@shared/schema";
 import { InstagramAPI } from "./instagram-api";
@@ -15,92 +14,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Webhook signature validation
-function validateWebhookSignature(
-  payload: string,
-  signature: string | undefined,
-  appSecret: string
-): boolean {
-  // Fail fast if app secret is not configured
-  if (!appSecret) {
-    console.error("🚨 CRITICAL: INSTAGRAM_APP_SECRET is not set!");
-    console.error("   All webhooks will be rejected until this is configured.");
-    return false;
-  }
-
-  if (!signature) {
-    console.log("❌ No X-Hub-Signature-256 header found");
-    return false;
-  }
-
-  // Debug: Log payload details
-  console.log("🔍 Signature Validation Debug:");
-  console.log(`   Payload length: ${payload.length} bytes`);
-  console.log(`   Payload preview: ${payload.substring(0, 100)}...`);
-
-  // Remove 'sha256=' prefix
-  const signatureHash = signature.startsWith("sha256=") 
-    ? signature.substring(7) 
-    : signature;
-
-  // Generate expected signature
-  const expectedHash = crypto
-    .createHmac("sha256", appSecret)
-    .update(payload)
-    .digest("hex");
-
-  // Check lengths match before comparison to prevent timingSafeEqual crash (DoS vector)
-  if (signatureHash.length !== expectedHash.length) {
-    console.log("❌ Signature validation failed - length mismatch");
-    console.log(`   Received length: ${signatureHash.length}`);
-    console.log(`   Expected length: ${expectedHash.length}`);
-    return false;
-  }
-
-  try {
-    // Secure comparison to prevent timing attacks
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(signatureHash, 'hex'),
-      Buffer.from(expectedHash, 'hex')
-    );
-
-    if (!isValid) {
-      console.log("❌ Signature validation failed");
-      console.log(`   Received: ${signatureHash.substring(0, 20)}...`);
-      console.log(`   Expected: ${expectedHash.substring(0, 20)}...`);
-    } else {
-      console.log("✅ Signature validation successful");
-    }
-
-    return isValid;
-  } catch (error) {
-    // Catch any remaining edge cases (invalid hex, etc.)
-    console.error("❌ Signature validation error:", error instanceof Error ? error.message : "Unknown error");
-    return false;
-  }
-}
-
 export function registerRoutes(app: Express, storage: IStorage) {
-  // Health check endpoint (for Docker/Kubernetes)
-  app.get("/api/health", async (req, res) => {
-    try {
-      // Check database connection by querying a simple table
-      await storage.getAllTemplates();
-      res.status(200).json({ 
-        status: "healthy", 
-        timestamp: new Date().toISOString(),
-        database: "connected"
-      });
-    } catch (error) {
-      res.status(503).json({ 
-        status: "unhealthy", 
-        timestamp: new Date().toISOString(),
-        database: "disconnected",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
   // Instagram Accounts
   app.get("/api/accounts", requireAuth, async (req, res) => {
     try {
@@ -470,13 +384,8 @@ export function registerRoutes(app: Express, storage: IStorage) {
   // Webhook Token Management
   app.get("/api/webhook-token", requireAuth, async (req, res) => {
     try {
-      // Hardcoded webhook verify token for all environments
-      const token = "zenthra";
-      res.json({ 
-        token: token, 
-        exists: true,
-        source: 'hardcoded'
-      });
+      const token = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+      res.json({ token: token || null, exists: !!token });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -484,113 +393,12 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
   app.post("/api/webhook-token/generate", requireAuth, async (req, res) => {
     try {
-      // Return hardcoded token
-      const token = "zenthra";
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
       
       res.json({ 
         token,
-        message: "Using hardcoded webhook token: zenthra"
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/webhook-token/set", requireAuth, async (req, res) => {
-    try {
-      // Token is hardcoded, but accept the request for backwards compatibility
-      const token = "zenthra";
-      
-      res.json({ 
-        success: true,
-        message: "Using hardcoded webhook token: zenthra",
-        token
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Webhook Subscription Status (auth required)
-  app.get("/api/webhook-status", requireAuth, async (req, res) => {
-    try {
-      const { webhookService } = await import('./instagram-webhook');
-      
-      // Get first account to check webhook status
-      const accounts = await storage.getUserAccounts(req.user!.id);
-      
-      if (accounts.length === 0) {
-        return res.json({
-          configured: false,
-          message: "No Instagram accounts connected",
-        });
-      }
-      
-      const firstAccount = accounts[0];
-      const status = await webhookService.getWebhookStatus(
-        firstAccount.instagramUserId,
-        firstAccount.accessToken
-      );
-      
-      res.json({
-        ...status,
-        setupInstructions: await webhookService.getSetupInstructions(),
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Public webhook debugging endpoint (for testing via cURL)
-  app.get("/api/webhook-debug", async (req, res) => {
-    try {
-      const { webhookService } = await import('./instagram-webhook');
-      const { instagramUserId, accessToken } = req.query;
-
-      if (!instagramUserId || !accessToken) {
-        return res.status(400).json({
-          error: "Missing parameters",
-          usage: "GET /api/webhook-debug?instagramUserId=XXX&accessToken=YYY"
-        });
-      }
-
-      const status = await webhookService.getWebhookStatus(
-        instagramUserId as string,
-        accessToken as string
-      );
-
-      res.json(status);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/webhook-subscribe", requireAuth, async (req, res) => {
-    try {
-      const { webhookService } = await import('./instagram-webhook');
-      const { accountId } = req.body;
-      
-      if (!accountId) {
-        return res.status(400).json({ error: "Account ID required" });
-      }
-      
-      const account = await storage.getAccount(accountId);
-      
-      if (!account || account.userId !== req.user!.id) {
-        return res.status(404).json({ error: "Account not found" });
-      }
-      
-      const subscribed = await webhookService.subscribeToWebhooks(
-        account.instagramUserId,
-        account.accessToken
-      );
-      
-      res.json({
-        success: subscribed,
-        message: subscribed 
-          ? "Webhooks subscribed successfully" 
-          : "Manual webhook setup required. See setup instructions.",
-        setupInstructions: !subscribed ? await webhookService.getSetupInstructions() : undefined,
+        message: "Copy this token and add it to your Replit Secrets as INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -603,79 +411,60 @@ export function registerRoutes(app: Express, storage: IStorage) {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
-    console.log(`\n🔐 Webhook Verification Request:`);
-    console.log(`  Mode: ${mode}`);
-    console.log(`  Received Token: ${token}`);
-    console.log(`  Challenge: ${challenge}`);
-
-    // Hardcoded webhook verify token
-    const verifyToken = "zenthra";
-    
-    console.log(`  Expected Token (hardcoded): ${verifyToken}`);
-    console.log(`  Tokens Match: ${token === verifyToken}`);
+    const verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
 
     if (mode === "subscribe" && token === verifyToken) {
-      console.log("✅ Webhook verified successfully!\n");
+      console.log("Webhook verified");
       res.status(200).send(challenge);
     } else {
-      console.log("❌ Webhook verification FAILED - token mismatch\n");
       res.sendStatus(403);
     }
   });
 
-  app.post("/api/webhooks/instagram", async (req: any, res) => {
+  app.post("/api/webhooks/instagram", async (req, res) => {
     try {
-      // 1) Validate webhook signature (CRITICAL SECURITY)
-      const appSecret = process.env.INSTAGRAM_APP_SECRET || "";
-      const signature = req.headers['x-hub-signature-256'] as string | undefined;
-      
-      // Debug: Check raw body capture
-      console.log("\n📥 Webhook POST received:");
-      console.log(`   Raw body exists: ${!!req.rawBody}`);
-      console.log(`   Raw body type: ${typeof req.rawBody}`);
-      if (req.rawBody) {
-        console.log(`   Raw body length: ${req.rawBody.length} bytes`);
-      }
-      
-      if (!validateWebhookSignature(req.rawBody || JSON.stringify(req.body), signature, appSecret)) {
-        console.error("🚨 SECURITY: Invalid webhook signature - possible forged request!");
-        return res.sendStatus(403);
-      }
-
-      console.log("✅ Webhook signature validated");
-
       const { object, entry } = req.body;
 
-      console.log("[IG WEBHOOK] received:", JSON.stringify(req.body, null, 2));
+      console.log("Webhook received:", JSON.stringify(req.body, null, 2));
 
-      // 2) ACK immediately (MUST be under 20s per Instagram requirements)
-      res.sendStatus(200);
+      if (object !== "instagram") {
+        return res.sendStatus(200);
+      }
 
-      // 3) Process async in background (prevents Instagram timeout/retries)
-      queueMicrotask(async () => {
-        try {
-          if (object !== "instagram") {
-            return;
-          }
+      if (!entry || !Array.isArray(entry)) {
+        console.log("No entry array in webhook payload");
+        return res.sendStatus(200);
+      }
 
-          if (!entry || !Array.isArray(entry)) {
-            console.log("No entry array in webhook payload");
-            return;
-          }
-
-          for (const item of entry) {
+      for (const item of entry) {
         const instagramUserId = item.id;
         console.log("Processing webhook for Instagram user ID:", instagramUserId);
         
-        let account = await storage.getAccountByInstagramUserId(instagramUserId);
+        let account = await storage.getAccountByUserId(instagramUserId);
 
         if (!account) {
-          console.log(`\n⚠️  WEBHOOK FOR UNKNOWN ACCOUNT`);
-          console.log(`   Instagram User ID: ${instagramUserId}`);
-          console.log(`   This account is not connected in your database`);
-          console.log(`   ACTION: Go to Accounts page → Connect Instagram Account via OAuth`);
-          console.log(`   The webhook will be skipped until the account is connected\n`);
-          continue;
+          console.log("No account found for Instagram user ID:", instagramUserId);
+          
+          const accounts = await storage.getAllAccounts();
+          const firstActiveAccount = accounts.find(a => a.isActive);
+          
+          if (firstActiveAccount) {
+            console.log("Auto-updating Instagram User ID for account:", firstActiveAccount.username);
+            await storage.updateAccount(firstActiveAccount.id, { instagramUserId: instagramUserId });
+            account = await storage.getAccount(firstActiveAccount.id);
+          }
+          
+          if (!account) {
+            if (accounts.length > 0) {
+              await storage.createWebhookEvent({
+                accountId: accounts[0].id,
+                eventType: "unknown",
+                payload: { raw: item, reason: "account_not_found", instagram_user_id: instagramUserId },
+                processed: false,
+              });
+            }
+            continue;
+          }
         }
 
         if (!account.isActive) {
@@ -944,13 +733,10 @@ export function registerRoutes(app: Express, storage: IStorage) {
           }
         }
       }
-        } catch (error: any) {
-          console.error("[IG WEBHOOK] Background processing error:", error);
-        }
-      });
 
+      res.sendStatus(200);
     } catch (error: any) {
-      console.error("[IG WEBHOOK] Validation error:", error);
+      console.error("Webhook error:", error);
       res.sendStatus(500);
     }
   });

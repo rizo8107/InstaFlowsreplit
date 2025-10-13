@@ -5,7 +5,6 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { webhookService } from "./instagram-webhook";
 import { User as SelectUser } from "@shared/schema";
 
 declare global {
@@ -34,12 +33,8 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  if (!process.env.SESSION_SECRET) {
-    throw new Error("SESSION_SECRET environment variable is required");
-  }
-
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
@@ -61,68 +56,13 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  // Instagram Business Login OAuth Routes - only available in development
-  // Step 1: Redirect to Instagram authorization
-  app.get("/api/auth/instagram", (req, res) => {
-    // Block OAuth flow in production
-    if (process.env.NODE_ENV === 'production') {
-      console.log("🚫 Instagram OAuth attempt blocked - endpoint disabled in production");
-      return res.status(403).json({ 
-        error: "Instagram OAuth is disabled in production",
-        message: "Please use manual account connection"
-      });
-    }
-
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Must be logged in to connect Instagram");
-    }
-
-    if (!process.env.INSTAGRAM_APP_ID) {
-      return res.status(500).send("Instagram App ID not configured");
-    }
-
-    // Determine the callback URL based on environment
-    // Use custom OAuth base URL if set, otherwise fall back to Replit domains
-    const baseUrl = process.env.OAUTH_BASE_URL || 
-      (process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : 'http://localhost:5000');
-    
-    const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
-    
-    const authUrl = new URL("https://www.instagram.com/oauth/authorize");
-    authUrl.searchParams.set("client_id", process.env.INSTAGRAM_APP_ID);
-    authUrl.searchParams.set("redirect_uri", redirectUri);
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", [
-      "instagram_business_basic",
-      "instagram_business_manage_messages",
-      "instagram_business_manage_comments",
-      "instagram_business_content_publish",
-    ].join(","));
-
-    res.redirect(authUrl.toString());
-  });
-
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
     const user = await storage.getUser(id);
     done(null, user);
   });
 
-  // Registration endpoint - only available in development mode
   app.post("/api/register", async (req, res, next) => {
-    // Block registration in production
-    if (process.env.NODE_ENV === 'production') {
-      console.log("🚫 Registration attempt blocked - endpoint disabled in production");
-      return res.status(403).json({ 
-        error: "Registration is disabled in production",
-        message: "Please contact an administrator for account access"
-      });
-    }
-
     const existingUser = await storage.getUserByEmail(req.body.email);
     if (existingUser) {
       return res.status(400).send("Email already exists");
@@ -156,168 +96,5 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { password, ...safeUser } = req.user!;
     res.json(safeUser);
-  });
-
-  // Check if OAuth and registration are available (based on environment)
-  app.get("/api/auth/config", (req, res) => {
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    res.json({
-      oauthEnabled: isDevelopment,
-      registrationEnabled: isDevelopment,
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
-
-  // Step 2: Handle Instagram callback and exchange code for tokens - only available in development
-  app.get("/api/auth/instagram/callback", async (req, res) => {
-    try {
-      // Block OAuth callback in production
-      if (process.env.NODE_ENV === 'production') {
-        console.log("🚫 Instagram OAuth callback blocked - endpoint disabled in production");
-        return res.redirect("/accounts?error=oauth_disabled");
-      }
-
-      if (!req.isAuthenticated()) {
-        return res.redirect("/auth?error=not_logged_in");
-      }
-
-      const { code, error, error_reason, error_description } = req.query;
-
-      // Handle authorization cancelation
-      if (error) {
-        console.error("Instagram OAuth error:", error, error_reason, error_description);
-        return res.redirect("/accounts?error=oauth_cancelled");
-      }
-
-      if (!code) {
-        return res.redirect("/accounts?error=no_code");
-      }
-
-      if (!process.env.INSTAGRAM_APP_ID || !process.env.INSTAGRAM_APP_SECRET) {
-        return res.redirect("/accounts?error=config_missing");
-      }
-
-      // Determine the callback URL (must match exactly)
-      // Use custom OAuth base URL if set, otherwise fall back to Replit domains
-      const baseUrl = process.env.OAUTH_BASE_URL || 
-        (process.env.REPLIT_DOMAINS 
-          ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-          : process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-            : 'http://localhost:5000');
-      
-      const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
-
-      // Step 2a: Exchange authorization code for short-lived access token
-      const tokenParams = new URLSearchParams({
-        client_id: process.env.INSTAGRAM_APP_ID,
-        client_secret: process.env.INSTAGRAM_APP_SECRET,
-        grant_type: 'authorization_code',
-        redirect_uri: redirectUri,
-        code: code as string,
-      });
-
-      const tokenResponse = await fetch('https://api.instagram.com/oauth/access_token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: tokenParams.toString(),
-      });
-
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenResponse.ok || !tokenData.access_token) {
-        console.error("Token exchange failed:", tokenData);
-        return res.redirect("/accounts?error=token_exchange_failed");
-      }
-
-      const shortLivedToken = tokenData.access_token;
-      const igUserId = tokenData.user_id;
-
-      // Step 2b: Exchange short-lived token for long-lived token (60 days)
-      const longLivedResponse = await fetch(
-        `https://graph.instagram.com/access_token?` +
-        `grant_type=ig_exchange_token&` +
-        `client_secret=${process.env.INSTAGRAM_APP_SECRET}&` +
-        `access_token=${shortLivedToken}`
-      );
-
-      const longLivedData = await longLivedResponse.json();
-
-      if (!longLivedResponse.ok || !longLivedData.access_token) {
-        console.error("Long-lived token exchange failed:", longLivedData);
-        // Fallback to short-lived token if long-lived exchange fails
-        var finalToken = shortLivedToken;
-      } else {
-        var finalToken = longLivedData.access_token;
-      }
-
-      // Step 3: Get Instagram account details
-      const profileResponse = await fetch(
-        `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${finalToken}`
-      );
-
-      const profileData = await profileResponse.json();
-
-      if (!profileResponse.ok || !profileData.username) {
-        console.error("Profile fetch failed:", profileData);
-        return res.redirect("/accounts?error=profile_fetch_failed");
-      }
-
-      console.log("\n📱 Instagram Account Connection Debug:");
-      console.log(`  OAuth igUserId from token: ${igUserId}`);
-      console.log(`  Graph API me.id: ${profileData.id}`);
-      console.log(`  Username: @${profileData.username}`);
-      console.log(`  Account Type: ${profileData.account_type}`);
-      console.log(`\n  ⚠️  Using Graph API ID (${profileData.id}) as this is what webhooks send`);
-
-      // Use the Graph API ID - this should be the Instagram Business Account ID
-      const accountIdToUse = profileData.id;
-
-      // Step 4: Check if account already exists and create/update
-      const existingAccount = await storage.getAccountByInstagramUserId(accountIdToUse);
-      
-      if (existingAccount) {
-        // Update existing account with new token
-        console.log(`  Updating existing account: ${existingAccount.id}`);
-        await storage.updateAccount(existingAccount.id, {
-          accessToken: finalToken,
-          username: profileData.username,
-        });
-        console.log(`  ✅ Account updated`);
-      } else {
-        // Create new account
-        console.log(`  Creating new account with ID: ${accountIdToUse}`);
-        await storage.createAccount({
-          userId: req.user!.id,
-          instagramUserId: accountIdToUse,
-          username: profileData.username,
-          accessToken: finalToken,
-        });
-        console.log(`  ✅ New account created`);
-      }
-
-      console.log(`\n✅ Account @${profileData.username} saved successfully!\n`);
-
-      // Step 5: Automatically subscribe to webhooks (fire-and-forget, non-blocking)
-      webhookService.subscribeToWebhooks(accountIdToUse, finalToken)
-        .then(async subscribed => {
-          if (subscribed) {
-            console.log("✅ Webhooks configured successfully for user:", igUserId);
-          } else {
-            console.log("⚠️ Webhook subscription needs manual setup for user:", igUserId);
-            console.log(await webhookService.getSetupInstructions());
-          }
-        })
-        .catch(webhookError => {
-          console.error("Webhook subscription error (non-blocking):", webhookError);
-        });
-
-      res.redirect("/accounts?success=true");
-    } catch (error) {
-      console.error("Instagram OAuth callback error:", error);
-      res.redirect("/accounts?error=connection_failed");
-    }
   });
 }
