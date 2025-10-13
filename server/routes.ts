@@ -585,6 +585,14 @@ export function registerRoutes(app: Express, storage: IStorage) {
 
             switch (field) {
               case "comments":
+                // Skip echo comments (bot's own replies)
+                if (value.from?.id === account.instagramUserId || 
+                    value.from?.username === account.username ||
+                    value.from?.self_ig_scoped_id) {
+                  console.log("Skipping echo comment from bot itself");
+                  continue;
+                }
+                
                 eventType = "comment_received";
                 triggerData = {
                   comment_id: value.id,
@@ -619,6 +627,13 @@ export function registerRoutes(app: Express, storage: IStorage) {
                 }
                 break;
               case "mentions":
+                // Skip echo mentions (bot mentioning itself)
+                if (value.from?.id === account.instagramUserId || 
+                    value.from?.username === account.username) {
+                  console.log("Skipping echo mention from bot itself");
+                  continue;
+                }
+                
                 eventType = "mention_received";
                 triggerData = {
                   mention_id: value.id,
@@ -630,6 +645,13 @@ export function registerRoutes(app: Express, storage: IStorage) {
                 break;
               case "story_insights":
               case "story_mentions":
+                // Skip echo story replies (bot's own replies)
+                if (value.from?.id === account.instagramUserId || 
+                    value.from?.username === account.username) {
+                  console.log("Skipping echo story reply from bot itself");
+                  continue;
+                }
+                
                 eventType = "story_reply_received";
                 triggerData = {
                   reply_id: value.id,
