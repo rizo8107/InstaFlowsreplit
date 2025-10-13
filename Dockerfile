@@ -12,8 +12,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Ensure dev dependencies are installed for build tools (vite, esbuild, etc.)
+ENV NODE_ENV=development
+# Install dependencies (includes dev deps when NODE_ENV!=production)
+RUN npm ci
 
 # Copy application files
 COPY . .
