@@ -113,7 +113,17 @@ export default function Accounts() {
           <h1 className="text-2xl font-bold text-foreground">Instagram Accounts</h1>
           <p className="text-sm text-muted-foreground">Manage connected Instagram accounts</p>
         </div>
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="gap-2"
+            onClick={() => (window.location.href = "/api/auth/instagram/start")}
+            data-testid="button-login-instagram"
+          >
+            <Instagram className="w-4 h-4" />
+            Login with Instagram
+          </Button>
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2" data-testid="button-add-account">
               <Plus className="w-4 h-4" />
@@ -179,7 +189,8 @@ export default function Accounts() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Webhook Configuration */}
@@ -430,10 +441,21 @@ export default function Accounts() {
               <p className="text-sm text-muted-foreground mb-4">
                 Connect your Instagram account to start automating workflows
               </p>
-              <Button className="gap-2" onClick={() => setAddDialogOpen(true)} data-testid="button-connect-first-account">
-                <Plus className="w-4 h-4" />
-                Connect Account
-              </Button>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() => (window.location.href = "/api/auth/instagram/start")}
+                  data-testid="button-login-instagram-empty"
+                >
+                  <Instagram className="w-4 h-4" />
+                  Login with Instagram
+                </Button>
+                <Button className="gap-2" onClick={() => setAddDialogOpen(true)} data-testid="button-connect-first-account">
+                  <Plus className="w-4 h-4" />
+                  Connect Account
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
