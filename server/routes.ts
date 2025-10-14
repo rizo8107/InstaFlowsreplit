@@ -130,15 +130,18 @@ export async function registerRoutes(app: Express, storage: IStorage) {
       longLivedToken = longResp.data?.access_token as string;
       */
 
-      // Fetch IG username using long-lived token
+      // Fetch IG username using long-lived token (optional, fallback to igUserId)
       step = "fetch_me";
-      const meResp = await axios.get("https://graph.instagram.com/me", {
-        params: { fields: "id,username", access_token: longLivedToken },
-      }).catch((err) => {
-        const details = err?.response?.data || { message: err?.message };
-        throw Object.assign(new Error("OAuth step failed"), { step, details });
-      });
-      const username = meResp.data?.username as string | undefined;
+      let username = igUserId;
+      try {
+        const meResp = await axios.get("https://graph.instagram.com/me", {
+          params: { fields: "id,username", access_token: longLivedToken },
+        });
+        username = meResp.data?.username || igUserId;
+      } catch (err) {
+        console.warn("Failed to fetch username, using igUserId as fallback");
+        // Continue with igUserId as username
+      }
 
       // Save account using IG long-lived token
       const accountData: InsertInstagramAccount = {
