@@ -147,6 +147,31 @@ export class FlowEngine {
         if (this.context.variables.comment_id && config.message) {
           console.log(`[FlowEngine] Replying to comment ${this.context.variables.comment_id}: ${config.message}`);
           try {
+            // Check if button template is configured for the reply
+            if (config.buttons && Array.isArray(config.buttons) && config.buttons.length > 0) {
+              console.log(`[FlowEngine] Replying to comment with button template (${config.buttons.length} buttons)`);
+
+              // For comment replies with buttons, we need to send a DM with buttons instead
+              // since comment replies don't support rich templates
+              if (this.context.variables.sender_id) {
+                const result = await this.api.sendButtonTemplate(
+                  this.context.variables.sender_id,
+                  config.message,
+                  config.subtitle,
+                  config.buttons.map((button: any) => ({
+                    type: "web_url",
+                    url: button.url || config.url || "#",
+                    title: button.title || "Click Here"
+                  }))
+                );
+                console.log(`[FlowEngine] Button DM sent successfully for comment reply, result:`, result);
+                return { success: true, action: "reply_comment_with_buttons", comment_id: this.context.variables.comment_id, message: config.message, buttons: config.buttons, result };
+              } else {
+                throw new Error("Cannot send button template for comment reply: sender_id not available");
+              }
+            }
+
+            // Regular text reply to comment
             const result = await this.api.replyToComment(this.context.variables.comment_id, config.message);
             console.log(`[FlowEngine] Reply successful, result:`, result);
             return { success: true, action: "reply_comment", comment_id: this.context.variables.comment_id, message: config.message, result };
