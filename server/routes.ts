@@ -48,9 +48,34 @@ export async function registerRoutes(app: Express, storage: IStorage) {
     res.redirect(authorizeUrl.toString());
   });
 
+  // Instagram OAuth - debug (auth required)
+  app.get("/api/auth/instagram/debug", requireAuth, (req, res) => {
+    const appId = process.env.INSTAGRAM_APP_ID;
+    const baseUrl = process.env.OAUTH_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
+    const scopes = [
+      "instagram_business_basic",
+      "instagram_business_manage_messages",
+      "instagram_business_manage_comments",
+      "instagram_business_content_publish",
+    ];
+    res.json({
+      authenticated: !!(req.isAuthenticated && req.isAuthenticated()),
+      appIdPresent: !!appId,
+      appId,
+      baseUrl,
+      redirectUri,
+      scopes,
+    });
+  });
+
   // Instagram OAuth - callback
   app.get("/api/auth/instagram/callback", requireAuth, async (req, res) => {
     try {
+      // If user isn't logged into our app, fail gracefully instead of throwing later
+      if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.status(401).json({ error: "Unauthorized", message: "Please login to the app before connecting Instagram." });
+      }
       const code = req.query.code as string | undefined;
       if (!code) return res.status(400).send("Missing code");
 
@@ -112,8 +137,9 @@ export async function registerRoutes(app: Express, storage: IStorage) {
 
       res.redirect("/accounts");
     } catch (error: any) {
-      console.error("Instagram OAuth callback error:", error?.response?.data || error);
-      res.status(500).send("OAuth failed");
+      const details = error?.response?.data || { message: error?.message || String(error) };
+      console.error("Instagram OAuth callback error:", details);
+      res.status(500).json({ error: "OAuthFailed", details });
     }
   });
 
