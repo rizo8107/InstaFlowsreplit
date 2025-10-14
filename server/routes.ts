@@ -72,8 +72,14 @@ export async function registerRoutes(app: Express, storage: IStorage) {
         }),
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
-      const shortLivedToken = shortResp.data?.access_token as string;
-      const igUserId = String(shortResp.data?.user_id);
+      // Some responses may return { data: [ { access_token, user_id, permissions } ] }
+      const tokenBlock = shortResp.data?.data?.[0] || shortResp.data || {};
+      const shortLivedToken = tokenBlock?.access_token as string | undefined;
+      const igUserId = String(tokenBlock?.user_id || shortResp.data?.user_id || "");
+      if (!shortLivedToken || !igUserId) {
+        console.error("IG OAuth: Missing short-lived token or user_id", shortResp.data);
+        throw new Error("Instagram did not return access_token/user_id. Check redirect URI and app configuration.");
+      }
 
       // Step 2: Exchange to long-lived token (60 days)
       const longResp = await axios.get("https://graph.instagram.com/access_token", {
