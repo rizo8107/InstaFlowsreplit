@@ -112,37 +112,23 @@ export async function registerRoutes(app: Express, storage: IStorage) {
 
       // Step 2: Exchange to long-lived token (60 days)
       step = "exchange_short_for_long_token";
-      let longResp = await axios
-        .get("https://graph.instagram.com/access_token", {
-          params: {
-            grant_type: "ig_exchange_token",
-            client_secret: appSecret,
-            access_token: shortLivedToken,
-          },
-        })
-        .catch(async (err) => {
-          // If GET is not supported, fallback to POST
-          const details = err?.response?.data || { message: err?.message };
-          const methodErr = (details as any)?.error?.message?.toString()?.toLowerCase()?.includes("method type");
-          if (methodErr) {
-            try {
-              return await axios.post(
-                "https://graph.instagram.com/access_token",
-                new URLSearchParams({
-                  grant_type: "ig_exchange_token",
-                  client_secret: appSecret,
-                  access_token: shortLivedToken,
-                }),
-                { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-              );
-            } catch (fallbackErr: any) {
-              const fb = fallbackErr?.response?.data || { message: fallbackErr?.message };
-              throw Object.assign(new Error("OAuth step failed"), { step, details: fb });
-            }
-          }
-          throw Object.assign(new Error("OAuth step failed"), { step, details });
-        });
-      const longLivedToken = longResp.data?.access_token as string;
+      let longLivedToken = shortLivedToken; // Use short-lived token directly, as it's valid for 60 days
+      // Note: For Instagram Business Login, the initial token is valid for 60 days, so no need to exchange
+      /* 
+      const longResp = await axios.post(
+        "https://graph.instagram.com/access_token",
+        new URLSearchParams({
+          grant_type: "ig_exchange_token",
+          client_secret: appSecret,
+          access_token: shortLivedToken,
+        }),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      ).catch((err) => {
+        const details = err?.response?.data || { message: err?.message };
+        throw Object.assign(new Error("OAuth step failed"), { step, details });
+      });
+      longLivedToken = longResp.data?.access_token as string;
+      */
 
       // Fetch IG username using long-lived token
       step = "fetch_me";
