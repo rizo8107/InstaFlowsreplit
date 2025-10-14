@@ -86,6 +86,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
       if (!appId || !appSecret) return res.status(500).send("Instagram app credentials not configured");
 
       // Step 1: Exchange code for short-lived IG User token
+      let step = "exchange_code_for_short_token";
       const shortResp = await axios.post(
         "https://api.instagram.com/oauth/access_token",
         new URLSearchParams({
@@ -96,7 +97,10 @@ export async function registerRoutes(app: Express, storage: IStorage) {
           code,
         }),
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-      );
+      ).catch((err) => {
+        const details = err?.response?.data || { message: err?.message };
+        throw Object.assign(new Error("OAuth step failed"), { step, details });
+      });
       // Some responses may return { data: [ { access_token, user_id, permissions } ] }
       const tokenBlock = shortResp.data?.data?.[0] || shortResp.data || {};
       const shortLivedToken = tokenBlock?.access_token as string | undefined;
@@ -107,18 +111,46 @@ export async function registerRoutes(app: Express, storage: IStorage) {
       }
 
       // Step 2: Exchange to long-lived token (60 days)
-      const longResp = await axios.get("https://graph.instagram.com/access_token", {
-        params: {
-          grant_type: "ig_exchange_token",
-          client_secret: appSecret,
-          access_token: shortLivedToken,
-        },
-      });
+      step = "exchange_short_for_long_token";
+      let longResp = await axios
+        .get("https://graph.instagram.com/access_token", {
+          params: {
+            grant_type: "ig_exchange_token",
+            client_secret: appSecret,
+            access_token: shortLivedToken,
+          },
+        })
+        .catch(async (err) => {
+          // If GET is not supported, fallback to POST
+          const details = err?.response?.data || { message: err?.message };
+          const methodErr = (details as any)?.error?.message?.toString()?.toLowerCase()?.includes("method type");
+          if (methodErr) {
+            try {
+              return await axios.post(
+                "https://graph.instagram.com/access_token",
+                new URLSearchParams({
+                  grant_type: "ig_exchange_token",
+                  client_secret: appSecret,
+                  access_token: shortLivedToken,
+                }),
+                { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+              );
+            } catch (fallbackErr: any) {
+              const fb = fallbackErr?.response?.data || { message: fallbackErr?.message };
+              throw Object.assign(new Error("OAuth step failed"), { step, details: fb });
+            }
+          }
+          throw Object.assign(new Error("OAuth step failed"), { step, details });
+        });
       const longLivedToken = longResp.data?.access_token as string;
 
       // Fetch IG username using long-lived token
+      step = "fetch_me";
       const meResp = await axios.get("https://graph.instagram.com/me", {
         params: { fields: "id,username", access_token: longLivedToken },
+      }).catch((err) => {
+        const details = err?.response?.data || { message: err?.message };
+        throw Object.assign(new Error("OAuth step failed"), { step, details });
       });
       const username = meResp.data?.username as string | undefined;
 
@@ -137,9 +169,10 @@ export async function registerRoutes(app: Express, storage: IStorage) {
 
       res.redirect("/accounts");
     } catch (error: any) {
-      const details = error?.response?.data || { message: error?.message || String(error) };
-      console.error("Instagram OAuth callback error:", details);
-      res.status(500).json({ error: "OAuthFailed", details });
+      const details = error?.details || error?.response?.data || { message: error?.message || String(error) };
+      const step = error?.step;
+      console.error("Instagram OAuth callback error:", { step, details });
+      res.status(500).json({ error: "OAuthFailed", step, details });
     }
   });
 
