@@ -501,6 +501,12 @@ export async function registerRoutes(app: Express, storage: IStorage) {
               console.log("Skipping echo message from bot itself");
               continue;
             }
+            // Skip messages sent by our own account/page to prevent loops
+            const fromIdMsg = msg.sender?.id || msg.message?.from?.id;
+            if (fromIdMsg && (fromIdMsg === account.instagramUserId || fromIdMsg === (account as any).pageId)) {
+              console.log("Skipping message from our own account/page (messaging array)");
+              continue;
+            }
             
             const triggerData = {
               message_id: msg.message?.mid,
@@ -761,12 +767,12 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                 // Handle both value.message and value.messages[] structures
                 const msgData = value.message || (value.messages && value.messages[0]);
                 const senderId = msgData?.from?.id || value.from?.id || value.sender?.id;
-                // Skip messages originating from our own IG account to prevent echo loops
-                if (senderId && (senderId === account.instagramUserId)) {
-                  console.log("Skipping self-sent message in changes webhook (messages)");
+                // Skip messages sent by our own account/page to prevent loops
+                if (senderId && (senderId === account.instagramUserId || senderId === (account as any).pageId)) {
+                  console.log("Skipping echo DM from bot itself (changes.messages)");
                   continue;
                 }
-
+                
                 if (msgData) {
                   triggerData = {
                     message_id: msgData.mid || msgData.id || value.id,

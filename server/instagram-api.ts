@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// Instagram Graph API endpoints are served via Facebook Graph API domain
-const GRAPH_API_BASE = "https://graph.facebook.com/v24.0";
+const GRAPH_API_BASE = "https://graph.instagram.com/v24.0";
 
 export interface InstagramComment {
   id: string;
@@ -226,16 +225,12 @@ export class InstagramAPI {
   // Direct Messages
   async sendDirectMessage(recipientId: string, message: string): Promise<any> {
     try {
-      // Prefer Page Messaging API when page credentials are available
-      const usePageEndpoint = !!(this.pageId && this.pageAccessToken);
-      const endpoint = usePageEndpoint
-        ? `${GRAPH_API_BASE}/${this.pageId}/messages`
-        : `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
-
+      // Use Instagram Graph API v24.0 format: /<IG_ID>/messages with recipient.id
+      const endpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
+      
       const requestBody = {
-        messaging_product: "instagram",
         recipient: { id: recipientId },
-        message: { text: message },
+        message: { text: message }
       };
       
       console.log(`[InstagramAPI] Sending DM to recipient ${recipientId} via ${endpoint}`);
@@ -246,7 +241,7 @@ export class InstagramAPI {
         requestBody,
         {
           params: {
-            access_token: this.pageAccessToken || this.accessToken,
+            access_token: this.accessToken,
           },
           headers: {
             'Content-Type': 'application/json',
@@ -274,13 +269,9 @@ export class InstagramAPI {
     buttons: Array<{type: 'web_url' | 'postback', title: string, url?: string, payload?: string}>
   ): Promise<any> {
     try {
-      const usePageEndpoint = !!(this.pageId && this.pageAccessToken);
-      const endpoint = usePageEndpoint
-        ? `${GRAPH_API_BASE}/${this.pageId}/messages`
-        : `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
+      const endpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
       
-      const requestBody: any = {
-        messaging_product: "instagram",
+      const requestBody = {
         recipient: { id: recipientId },
         message: {
           attachment: {
@@ -336,16 +327,12 @@ export class InstagramAPI {
   // Private Reply (Messenger Platform - used for comment-triggered DMs)
   async sendPrivateReply(commentId: string, message: string): Promise<any> {
     try {
-      // Prefer Page Messaging API when available
-      const usePageEndpoint = !!(this.pageId && this.pageAccessToken);
-      const igEndpoint = usePageEndpoint
-        ? `${GRAPH_API_BASE}/${this.pageId}/messages`
-        : `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
+      // Use Instagram Graph API endpoint first (as per Meta documentation)
+      // POST /{ig-user-id}/messages with { recipient: { comment_id }, message: { text } }
+      const igEndpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
       const igRequestBody = {
-        messaging_product: "instagram",
         recipient: { comment_id: commentId },
         message: { text: message },
-        messaging_type: "RESPONSE",
       };
 
       console.log(`[InstagramAPI] Sending Private Reply via IG endpoint from comment ${commentId}`);
@@ -356,7 +343,7 @@ export class InstagramAPI {
         igRequestBody,
         {
           params: {
-            access_token: this.pageAccessToken || this.accessToken,
+            access_token: this.accessToken,
           },
           headers: {
             'Content-Type': 'application/json',
