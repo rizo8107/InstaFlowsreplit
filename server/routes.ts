@@ -761,7 +761,12 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                 // Handle both value.message and value.messages[] structures
                 const msgData = value.message || (value.messages && value.messages[0]);
                 const senderId = msgData?.from?.id || value.from?.id || value.sender?.id;
-                
+                // Skip messages originating from our own IG account to prevent echo loops
+                if (senderId && (senderId === account.instagramUserId)) {
+                  console.log("Skipping self-sent message in changes webhook (messages)");
+                  continue;
+                }
+
                 if (msgData) {
                   triggerData = {
                     message_id: msgData.mid || msgData.id || value.id,
