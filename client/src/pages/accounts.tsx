@@ -41,6 +41,17 @@ export default function Accounts() {
     profilePicture: "",
   });
 
+  const refreshUsernameMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("POST", `/api/accounts/${id}/refresh-username`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      toast({ title: "Username refreshed", description: "Fetched latest Instagram username." });
+    },
+    onError: () => {
+      toast({ title: "Failed", description: "Could not refresh username.", variant: "destructive" });
+    },
+  });
+
   // Get webhook URL from current domain
   const webhookUrl = `${window.location.origin}/api/webhooks/instagram`;
 
@@ -385,6 +396,15 @@ export default function Accounts() {
                     >
                       <ExternalLink className="w-3 h-3" />
                       View Profile
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refreshUsernameMutation.mutate(account.id)}
+                      disabled={refreshUsernameMutation.isPending}
+                      data-testid={`button-refresh-username-${account.id}`}
+                    >
+                      Refresh username
                     </Button>
                     <Button
                       variant="outline"

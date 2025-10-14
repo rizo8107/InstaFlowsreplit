@@ -199,6 +199,46 @@ export async function registerRoutes(app: Express, storage: IStorage) {
     }
   });
 
+  // Refresh Instagram username for an account
+  app.post("/api/accounts/:id/refresh-username", requireAuth, async (req, res) => {
+    try {
+      const account = await storage.getAccount(req.params.id);
+      if (!account || account.userId !== req.user!.id) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      const accessToken = account.accessToken;
+      const igUserId = account.instagramUserId;
+      if (!accessToken || !igUserId) {
+        return res.status(400).json({ error: "Missing access token or instagram user id" });
+      }
+
+      let username: string | undefined;
+      try {
+        const meResp = await axios.get("https://graph.instagram.com/me", {
+          params: { fields: "id,username", access_token: accessToken },
+        });
+        username = meResp.data?.username as string | undefined;
+      } catch (e: any) {
+        // Fallback: query directly by IG user id
+        try {
+          const lookup = await axios.get(`https://graph.instagram.com/${igUserId}`, {
+            params: { fields: "id,username", access_token: accessToken },
+          });
+          username = lookup.data?.username as string | undefined;
+        } catch (e2: any) {
+          return res.status(502).json({ error: "Failed to fetch username", details: e2?.response?.data || e2?.message });
+        }
+      }
+
+      if (!username) username = igUserId;
+      const updated = await storage.updateAccount(account.id, { username });
+      return res.json({ id: account.id, username: updated?.username || username });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.delete("/api/accounts/:id", requireAuth, async (req, res) => {
     try {
       // Verify account belongs to user
