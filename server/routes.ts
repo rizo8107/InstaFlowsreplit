@@ -586,10 +586,33 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                       account.pageAccessToken || undefined
                     );
                     
-                    await api.sendDirectMessage(
-                      triggerData.sender_id,
-                      agentResponse.content
-                    );
+                    // 24-hour messaging window guard with Private Reply fallback if applicable
+                    {
+                      const ts = (triggerData as any)?.timestamp || (triggerData as any)?.created_time;
+                      let lastMs = 0;
+                      if (typeof ts === 'number') {
+                        lastMs = ts > 1e12 ? ts : ts * 1000;
+                      } else if (typeof ts === 'string') {
+                        const d = Date.parse(ts);
+                        if (!Number.isNaN(d)) lastMs = d;
+                      }
+                      const minutesSince = lastMs ? Math.floor((Date.now() - lastMs) / 60000) : undefined;
+
+                      if (minutesSince !== undefined && minutesSince > 1440) {
+                        if ((triggerData as any)?.comment_id) {
+                          const replyMsg = "Reply with ANY message to continue";
+                          await api.sendPrivateReply((triggerData as any).comment_id, replyMsg);
+                          console.log(`[Webhook] Outside 24h window. Sent Private Reply fallback.`);
+                        } else {
+                          throw Object.assign(new Error("Blocked by 24-hour messaging window"), { code: "IG_24H_WINDOW", minutesSince });
+                        }
+                      } else {
+                        await api.sendDirectMessage(
+                          triggerData.sender_id,
+                          agentResponse.content
+                        );
+                      }
+                    }
 
                     // Update conversation timestamp
                     await storage.updateActiveAgentConversation(activeConversation.id, {

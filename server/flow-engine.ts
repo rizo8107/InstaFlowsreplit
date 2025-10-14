@@ -164,6 +164,35 @@ export class FlowEngine {
         if (this.context.variables.sender_id && config.message) {
           console.log(`[FlowEngine] Sending DM to sender ${this.context.variables.sender_id}: ${config.message}`);
           try {
+            // If this flow was triggered by a comment, prefer Private Reply
+            if (this.context.variables.comment_id) {
+              const replyMsg = config.message;
+              const result = await this.api.sendPrivateReply(this.context.variables.comment_id, replyMsg);
+              console.log(`[FlowEngine] Comment trigger detected. Used Private Reply instead of DM.`);
+              return { success: true, action: "send_private_reply", comment_id: this.context.variables.comment_id, message: replyMsg, result };
+            }
+            const ts = (this.context as any).triggerData?.timestamp || (this.context as any).triggerData?.created_time;
+            let lastMs = 0;
+            if (typeof ts === 'number') {
+              lastMs = ts > 1e12 ? ts : ts * 1000;
+            } else if (typeof ts === 'string') {
+              const d = Date.parse(ts);
+              if (!Number.isNaN(d)) lastMs = d;
+            }
+            const minutesSince = lastMs ? Math.floor((Date.now() - lastMs) / 60000) : undefined;
+            if (minutesSince !== undefined && minutesSince > 1440) {
+              if (this.context.variables.comment_id) {
+                const replyMsg = config.out_of_window_message || "Reply with ANY message to continue";
+                const result = await this.api.sendPrivateReply(this.context.variables.comment_id, replyMsg);
+                console.log(`[FlowEngine] Outside 24h window. Sent Private Reply fallback.`);
+                return { success: true, action: "send_private_reply_fallback", comment_id: this.context.variables.comment_id, message: replyMsg, minutes_since_last_user_msg: minutesSince, result };
+              } else {
+                const err: any = new Error("Blocked by 24-hour messaging window");
+                err.code = "IG_24H_WINDOW";
+                err.minutesSince = minutesSince;
+                throw err;
+              }
+            }
             let result;
             // Check if button template is configured
             if (config.buttons && Array.isArray(config.buttons) && config.buttons.length > 0) {
@@ -245,6 +274,35 @@ export class FlowEngine {
         if (this.context.variables.sender_id && config.url) {
           console.log(`[FlowEngine] Sending link to sender ${this.context.variables.sender_id}: ${config.url}`);
           try {
+            // If this flow was triggered by a comment, prefer Private Reply
+            if (this.context.variables.comment_id) {
+              const replyMsg = config.url;
+              const result = await this.api.sendPrivateReply(this.context.variables.comment_id, replyMsg);
+              console.log(`[FlowEngine] Comment trigger detected. Used Private Reply instead of DM for link.`);
+              return { success: true, action: "send_private_reply", comment_id: this.context.variables.comment_id, message: replyMsg, result };
+            }
+            const ts = (this.context as any).triggerData?.timestamp || (this.context as any).triggerData?.created_time;
+            let lastMs = 0;
+            if (typeof ts === 'number') {
+              lastMs = ts > 1e12 ? ts : ts * 1000;
+            } else if (typeof ts === 'string') {
+              const d = Date.parse(ts);
+              if (!Number.isNaN(d)) lastMs = d;
+            }
+            const minutesSince = lastMs ? Math.floor((Date.now() - lastMs) / 60000) : undefined;
+            if (minutesSince !== undefined && minutesSince > 1440) {
+              if (this.context.variables.comment_id) {
+                const replyMsg = config.out_of_window_message || "Reply with ANY message to continue";
+                const result = await this.api.sendPrivateReply(this.context.variables.comment_id, replyMsg);
+                console.log(`[FlowEngine] Outside 24h window. Sent Private Reply fallback.`);
+                return { success: true, action: "send_private_reply_fallback", comment_id: this.context.variables.comment_id, message: replyMsg, minutes_since_last_user_msg: minutesSince, result };
+              } else {
+                const err: any = new Error("Blocked by 24-hour messaging window");
+                err.code = "IG_24H_WINDOW";
+                err.minutesSince = minutesSince;
+                throw err;
+              }
+            }
             const result = await this.api.sendDirectMessage(this.context.variables.sender_id, config.url);
             console.log(`[FlowEngine] Link sent successfully, result:`, result);
             return { success: true, action: "send_link", sender_id: this.context.variables.sender_id, url: config.url, result };
@@ -388,11 +446,33 @@ export class FlowEngine {
                 content: agentResponse.content,
               });
 
-              // Send the agent's response as a DM
-              await this.api.sendDirectMessage(
-                this.context.variables.sender_id,
-                agentResponse.content
-              );
+              // 24-hour window guard before sending DM
+              const ts = (this.context as any).triggerData?.timestamp || (this.context as any).triggerData?.created_time;
+              let lastMs = 0;
+              if (typeof ts === 'number') {
+                lastMs = ts > 1e12 ? ts : ts * 1000;
+              } else if (typeof ts === 'string') {
+                const d = Date.parse(ts);
+                if (!Number.isNaN(d)) lastMs = d;
+              }
+              const minutesSince = lastMs ? Math.floor((Date.now() - lastMs) / 60000) : undefined;
+
+              if (minutesSince !== undefined && minutesSince > 1440) {
+                if (this.context.variables.comment_id) {
+                  const replyMsg = "Reply with ANY message to continue";
+                  await this.api.sendPrivateReply(this.context.variables.comment_id, replyMsg);
+                } else {
+                  const err: any = new Error("Blocked by 24-hour messaging window");
+                  err.code = "IG_24H_WINDOW";
+                  err.minutesSince = minutesSince;
+                  throw err;
+                }
+              } else {
+                await this.api.sendDirectMessage(
+                  this.context.variables.sender_id,
+                  agentResponse.content
+                );
+              }
             } else {
               console.warn(`[FlowEngine] Agent returned no content for conversation ${conversation.id}`);
             }

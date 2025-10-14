@@ -326,35 +326,59 @@ export class InstagramAPI {
   // Private Reply (Messenger Platform - used for comment-triggered DMs)
   async sendPrivateReply(commentId: string, message: string): Promise<any> {
     try {
-      if (!this.pageId || !this.pageAccessToken) {
-        throw new Error("Private Reply requires Facebook Page ID and Page Access Token. Please configure these in your account settings.");
+      // If Page credentials are available, use the Facebook Graph Page endpoint (recommended)
+      if (this.pageId && this.pageAccessToken) {
+        const endpoint = `https://graph.facebook.com/v24.0/${this.pageId}/messages`;
+        const requestBody = {
+          recipient: { comment_id: commentId },
+          message: { text: message },
+          messaging_type: "RESPONSE",
+        };
+
+        console.log(`[InstagramAPI] Sending Private Reply via Page endpoint from comment ${commentId}`);
+        console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
+
+        const response = await axios.post(
+          endpoint,
+          requestBody,
+          {
+            params: {
+              access_token: this.pageAccessToken,
+            },
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        console.log(`[InstagramAPI] Private Reply sent successfully:`, response.data);
+        return response.data;
       }
 
-      const endpoint = `https://graph.facebook.com/v24.0/${this.pageId}/messages`;
-      
-      const requestBody = {
+      // Fallback: Use Instagram Graph API endpoint with recipient.comment_id
+      // POST /{ig-user-id}/messages with { recipient: { comment_id }, message: { text } }
+      const igEndpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
+      const igRequestBody = {
         recipient: { comment_id: commentId },
         message: { text: message },
-        messaging_type: "RESPONSE"
       };
-      
-      console.log(`[InstagramAPI] Sending Private Reply from comment ${commentId}`);
-      console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
-      
-      const response = await axios.post(
-        endpoint,
-        requestBody,
+
+      console.log(`[InstagramAPI] Sending Private Reply via IG endpoint from comment ${commentId}`);
+      console.log(`[InstagramAPI] Request body:`, JSON.stringify(igRequestBody, null, 2));
+
+      const igResponse = await axios.post(
+        igEndpoint,
+        igRequestBody,
         {
           params: {
-            access_token: this.pageAccessToken,
+            access_token: this.accessToken,
           },
           headers: {
             'Content-Type': 'application/json',
           },
         }
       );
-      console.log(`[InstagramAPI] Private Reply sent successfully:`, response.data);
-      return response.data;
+      console.log(`[InstagramAPI] Private Reply (IG endpoint) sent successfully:`, igResponse.data);
+      return igResponse.data;
     } catch (error: any) {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown API error';
