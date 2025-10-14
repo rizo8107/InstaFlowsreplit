@@ -30,6 +30,7 @@ export interface InstagramMedia {
   id: string;
   caption?: string;
   media_type: string;
+  media_product_type?: string;
   media_url?: string;
   permalink?: string;
   thumbnail_url?: string;
@@ -152,7 +153,7 @@ export class InstagramAPI {
       const response = await axios.get(`${GRAPH_API_BASE}/${mediaId}`, {
         params: {
           access_token: this.accessToken,
-          fields: "id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username",
+          fields: "id,caption,media_type,media_product_type,media_url,permalink,thumbnail_url,timestamp,username",
         },
       });
       console.log(`[InstagramAPI] Media fetched successfully:`, response.data);
@@ -326,35 +327,7 @@ export class InstagramAPI {
   // Private Reply (Messenger Platform - used for comment-triggered DMs)
   async sendPrivateReply(commentId: string, message: string): Promise<any> {
     try {
-      // If Page credentials are available, use the Facebook Graph Page endpoint (recommended)
-      if (this.pageId && this.pageAccessToken) {
-        const endpoint = `https://graph.facebook.com/v24.0/${this.pageId}/messages`;
-        const requestBody = {
-          recipient: { comment_id: commentId },
-          message: { text: message },
-          messaging_type: "RESPONSE",
-        };
-
-        console.log(`[InstagramAPI] Sending Private Reply via Page endpoint from comment ${commentId}`);
-        console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
-
-        const response = await axios.post(
-          endpoint,
-          requestBody,
-          {
-            params: {
-              access_token: this.pageAccessToken,
-            },
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-        console.log(`[InstagramAPI] Private Reply sent successfully:`, response.data);
-        return response.data;
-      }
-
-      // Fallback: Use Instagram Graph API endpoint with recipient.comment_id
+      // Use Instagram Graph API endpoint first (as per Meta documentation)
       // POST /{ig-user-id}/messages with { recipient: { comment_id }, message: { text } }
       const igEndpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
       const igRequestBody = {
@@ -382,10 +355,49 @@ export class InstagramAPI {
     } catch (error: any) {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown API error';
+      const errorCode = errorData?.error?.code;
+      const errorSubcode = errorData?.error?.error_subcode;
       const errorDetails = JSON.stringify(errorData || error.message);
       
-      console.error(`[InstagramAPI] Error sending Private Reply:`, errorDetails);
-      console.error(`[InstagramAPI] Full error:`, error);
+      console.error(`[InstagramAPI] Error sending Private Reply via IG endpoint:`, errorDetails);
+      
+      // If IG endpoint fails, try Page endpoint as fallback
+      if (this.pageId && this.pageAccessToken) {
+        console.log(`[InstagramAPI] Retrying with Page endpoint...`);
+        try {
+          const endpoint = `https://graph.facebook.com/v24.0/${this.pageId}/messages`;
+          const requestBody = {
+            recipient: { comment_id: commentId },
+            message: { text: message },
+            messaging_type: "RESPONSE",
+          };
+
+          console.log(`[InstagramAPI] Sending Private Reply via Page endpoint from comment ${commentId}`);
+          console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
+
+          const response = await axios.post(
+            endpoint,
+            requestBody,
+            {
+              params: {
+                access_token: this.pageAccessToken,
+              },
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          console.log(`[InstagramAPI] Private Reply (Page endpoint) sent successfully:`, response.data);
+          return response.data;
+        } catch (pageError: any) {
+          console.error(`[InstagramAPI] Page endpoint also failed:`, pageError.response?.data || pageError.message);
+        }
+      }
+      
+      // Error subcode 2534001: Thread owner has archived/deleted conversation or thread doesn't exist
+      if (errorSubcode === 2534001) {
+        throw new Error(`Private Reply failed: The conversation thread doesn't exist, was deleted, or was archived by the user. This can happen if: (1) the comment was deleted, (2) the user archived the conversation, or (3) trying to use Private Reply when a normal DM should be used instead. Error code: ${errorCode}, subcode: ${errorSubcode}`);
+      }
       
       throw new Error(`Private Reply Error: ${errorMessage} - Details: ${errorDetails}`);
     }
@@ -433,19 +445,6 @@ export class InstagramAPI {
   }
 
   // Media
-  async getMedia(mediaId: string): Promise<any> {
-    const response = await axios.get(
-      `${GRAPH_API_BASE}/${mediaId}`,
-      {
-        params: {
-          access_token: this.accessToken,
-          fields: "id,caption,media_type,media_product_type,media_url,permalink,timestamp,username",
-        },
-      }
-    );
-    return response.data;
-  }
-
   async isReel(mediaId: string): Promise<boolean> {
     try {
       const media = await this.getMedia(mediaId);

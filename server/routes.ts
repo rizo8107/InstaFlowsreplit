@@ -588,7 +588,12 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                     
                     // 24-hour messaging window guard with Private Reply fallback if applicable
                     {
-                      const ts = (triggerData as any)?.timestamp || (triggerData as any)?.created_time;
+                      const ts = (triggerData as any)?.timestamp || 
+                                (triggerData as any)?.created_time ||
+                                (triggerData as any)?.created_at;
+                      
+                      console.log(`[Webhook] Agent reply - Extracted timestamp:`, ts);
+                      
                       let lastMs = 0;
                       if (typeof ts === 'number') {
                         lastMs = ts > 1e12 ? ts : ts * 1000;
@@ -596,17 +601,27 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                         const d = Date.parse(ts);
                         if (!Number.isNaN(d)) lastMs = d;
                       }
-                      const minutesSince = lastMs ? Math.floor((Date.now() - lastMs) / 60000) : undefined;
+                      const minutesSince = lastMs > 0 ? Math.floor((Date.now() - lastMs) / 60000) : undefined;
 
-                      if (minutesSince !== undefined && minutesSince > 1440) {
+                      console.log(`[Webhook] Agent reply - Time check: minutesSince=${minutesSince}, comment_id=${(triggerData as any)?.comment_id}`);
+
+                      // If we can't determine timestamp, fail safe
+                      if (minutesSince === undefined) {
+                        console.warn(`[Webhook] WARNING: Could not determine message timestamp for agent reply. Blocking DM send.`);
+                        throw Object.assign(new Error("Cannot send agent DM: Unable to verify 24-hour messaging window (timestamp not found)"), { code: "IG_MISSING_TIMESTAMP" });
+                      }
+
+                      if (minutesSince > 1440) {
+                        console.log(`[Webhook] Agent reply: Outside 24h window (${minutesSince} minutes). Attempting fallback...`);
                         if ((triggerData as any)?.comment_id) {
                           const replyMsg = "Reply with ANY message to continue";
                           await api.sendPrivateReply((triggerData as any).comment_id, replyMsg);
                           console.log(`[Webhook] Outside 24h window. Sent Private Reply fallback.`);
                         } else {
-                          throw Object.assign(new Error("Blocked by 24-hour messaging window"), { code: "IG_24H_WINDOW", minutesSince });
+                          throw Object.assign(new Error(`Blocked by 24-hour messaging window (${minutesSince} minutes since last interaction)`), { code: "IG_24H_WINDOW", minutesSince });
                         }
                       } else {
+                        console.log(`[Webhook] Agent reply: Within 24h window (${minutesSince} minutes). Sending DM...`);
                         await api.sendDirectMessage(
                           triggerData.sender_id,
                           agentResponse.content
@@ -722,6 +737,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                   from_username: value.from?.username,
                   media_id: value.media?.id,
                   media_type: value.media?.media_product_type,
+                  timestamp: value.created_time || value.timestamp || Date.now(),
                 };
                 
                 // Fetch media details if media_id is available
@@ -778,6 +794,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                   from_id: value.from?.id,
                   from_username: value.from?.username,
                   media_id: value.media?.id,
+                  timestamp: value.created_time || value.timestamp || Date.now(),
                 };
                 break;
               case "story_insights":
@@ -795,6 +812,7 @@ export async function registerRoutes(app: Express, storage: IStorage) {
                   reply_text: value.text,
                   from_id: value.from?.id,
                   from_username: value.from?.username,
+                  timestamp: value.created_time || value.timestamp || Date.now(),
                 };
                 break;
               default:
