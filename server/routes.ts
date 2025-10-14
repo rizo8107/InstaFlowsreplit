@@ -16,143 +16,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(app: Express, storage: IStorage) {
-  // Instagram OAuth: Start login to connect business account
-  app.get("/api/auth/instagram/start", requireAuth, async (req, res) => {
-    try {
-      const clientId = process.env.INSTAGRAM_APP_ID!;
-      const base = process.env.OAUTH_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const redirectUri = `${base}/api/auth/instagram/callback`;
-      const scopes = [
-        "instagram_business_basic",
-        "instagram_business_manage_messages",
-        "instagram_business_manage_comments",
-        "instagram_business_content_publish",
-        "instagram_business_manage_insights",
-        "pages_show_list",
-        "pages_manage_metadata",
-        "pages_read_engagement",
-        "public_profile",
-      ].join(",");
-      const state = encodeURIComponent(JSON.stringify({ r: "/accounts" }));
-      const url = `https://www.instagram.com/oauth/authorize?client_id=${clientId}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&response_type=code` +
-        `&scope=${encodeURIComponent(scopes)}` +
-        `&force_reauth=true` +
-        `&state=${state}`;
-      res.redirect(url);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message || String(err) });
-    }
-  });
-
-  // Instagram OAuth: Callback, exchange code, discover IG account(s), subscribe, save
-  app.get("/api/auth/instagram/callback", requireAuth, async (req, res) => {
-    try {
-      const code = req.query.code as string;
-      const stateRaw = (req.query.state as string) || "{}";
-      const state = JSON.parse(decodeURIComponent(stateRaw));
-      const base = process.env.OAUTH_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const redirectUri = `${base}/api/auth/instagram/callback`;
-
-      // 1) Exchange code -> short-lived user token
-      const tokenResp = await axios.get("https://graph.facebook.com/v20.0/oauth/access_token", {
-        params: {
-          client_id: process.env.INSTAGRAM_APP_ID,
-          client_secret: process.env.INSTAGRAM_APP_SECRET,
-          redirect_uri: redirectUri,
-          code,
-        },
-      });
-      let userToken = tokenResp.data.access_token as string;
-
-      // 2) Exchange to long-lived (optional but recommended)
-      try {
-        const longResp = await axios.get("https://graph.facebook.com/v20.0/oauth/access_token", {
-          params: {
-            grant_type: "fb_exchange_token",
-            client_id: process.env.INSTAGRAM_APP_ID,
-            client_secret: process.env.INSTAGRAM_APP_SECRET,
-            fb_exchange_token: userToken,
-          },
-        });
-        userToken = longResp.data.access_token || userToken;
-      } catch {}
-
-      // 3) Fetch user pages with tokens
-      const pagesResp = await axios.get("https://graph.facebook.com/v20.0/me/accounts", {
-        params: { access_token: userToken, fields: "id,name,access_token" },
-      });
-
-      const connected: Array<{ pageId: string; pageAccessToken: string; igId?: string; username?: string; profilePicture?: string; }> = [];
-
-      for (const p of pagesResp.data?.data || []) {
-        const pageId = p.id as string;
-        const pageAccessToken = p.access_token as string;
-
-        // 4) Connected IG account for the page
-        const igResp = await axios.get(`https://graph.facebook.com/v20.0/${pageId}`, {
-          params: { fields: "connected_instagram_account", access_token: pageAccessToken },
-        });
-        const igId = igResp.data?.connected_instagram_account?.id as string | undefined;
-        if (!igId) continue;
-
-        // 5) IG details
-        const igUserResp = await axios.get(`https://graph.facebook.com/v20.0/${igId}`, {
-          params: { fields: "username,profile_picture_url", access_token: pageAccessToken },
-        });
-        const username = igUserResp.data?.username as string | undefined;
-        const profilePicture = igUserResp.data?.profile_picture_url as string | undefined;
-
-        // 6) Subscribe page to app to receive messaging/webhooks
-        try {
-          await axios.post(`https://graph.facebook.com/v20.0/${pageId}/subscribed_apps`, null, {
-            params: {
-              access_token: pageAccessToken,
-              subscribed_fields: "messages,feed,mention,messaging_postbacks,messaging_seen,messaging_handovers",
-            },
-          });
-        } catch (e: any) {
-          console.warn("Page subscribe failed", pageId, e?.response?.data || String(e));
-        }
-
-        connected.push({ pageId, pageAccessToken, igId, username, profilePicture });
-      }
-
-      // 7) Save accounts (create or update by instagramUserId)
-      for (const c of connected) {
-        if (!c.igId) continue;
-        const existing = await storage.getAccountByUserId(c.igId);
-        if (existing) {
-          await storage.updateAccount(existing.id, {
-            username: c.username || existing.username,
-            accessToken: c.pageAccessToken,
-            pageId: c.pageId,
-            pageAccessToken: c.pageAccessToken,
-            profilePicture: c.profilePicture || existing.profilePicture,
-            isActive: true,
-          } as any);
-        } else {
-          await storage.createAccount({
-            userId: req.user!.id,
-            username: c.username || "unknown",
-            instagramUserId: c.igId,
-            accessToken: c.pageAccessToken,
-            pageId: c.pageId,
-            pageAccessToken: c.pageAccessToken,
-            profilePicture: c.profilePicture,
-            isActive: true,
-          } as any);
-        }
-      }
-
-      const returnTo = state?.r || "/accounts";
-      res.redirect(returnTo);
-    } catch (err: any) {
-      console.error("/api/auth/instagram/callback error", err?.response?.data || err);
-      res.status(500).send("Instagram connect failed. Check server logs.");
-    }
-  });
   // Instagram Accounts
   app.get("/api/accounts", requireAuth, async (req, res) => {
     try {
@@ -160,6 +23,91 @@ export async function registerRoutes(app: Express, storage: IStorage) {
       res.json(accounts);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Instagram OAuth - start
+  app.get("/api/auth/instagram/start", requireAuth, async (req, res) => {
+    const appId = process.env.INSTAGRAM_APP_ID;
+    const baseUrl = process.env.OAUTH_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
+    // Instagram Business Login scopes
+    const scopes = [
+      "instagram_business_basic",
+      "instagram_business_manage_messages",
+      "instagram_business_manage_comments",
+      "instagram_business_content_publish",
+    ];
+    if (!appId) return res.status(500).send("INSTAGRAM_APP_ID not configured");
+    const authorizeUrl = new URL("https://www.instagram.com/oauth/authorize");
+    authorizeUrl.searchParams.set("force_reauth", "true");
+    authorizeUrl.searchParams.set("client_id", appId);
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("scope", scopes.join(","));
+    res.redirect(authorizeUrl.toString());
+  });
+
+  // Instagram OAuth - callback
+  app.get("/api/auth/instagram/callback", requireAuth, async (req, res) => {
+    try {
+      const code = req.query.code as string | undefined;
+      if (!code) return res.status(400).send("Missing code");
+
+      const appId = process.env.INSTAGRAM_APP_ID;
+      const appSecret = process.env.INSTAGRAM_APP_SECRET;
+      const baseUrl = process.env.OAUTH_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
+      if (!appId || !appSecret) return res.status(500).send("Instagram app credentials not configured");
+
+      // Step 1: Exchange code for short-lived IG User token
+      const shortResp = await axios.post(
+        "https://api.instagram.com/oauth/access_token",
+        new URLSearchParams({
+          client_id: appId,
+          client_secret: appSecret,
+          grant_type: "authorization_code",
+          redirect_uri: redirectUri,
+          code,
+        }),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      );
+      const shortLivedToken = shortResp.data?.access_token as string;
+      const igUserId = String(shortResp.data?.user_id);
+
+      // Step 2: Exchange to long-lived token (60 days)
+      const longResp = await axios.get("https://graph.instagram.com/access_token", {
+        params: {
+          grant_type: "ig_exchange_token",
+          client_secret: appSecret,
+          access_token: shortLivedToken,
+        },
+      });
+      const longLivedToken = longResp.data?.access_token as string;
+
+      // Fetch IG username using long-lived token
+      const meResp = await axios.get("https://graph.instagram.com/me", {
+        params: { fields: "id,username", access_token: longLivedToken },
+      });
+      const username = meResp.data?.username as string | undefined;
+
+      // Save account using IG long-lived token
+      const accountData: InsertInstagramAccount = {
+        userId: req.user!.id,
+        username: username || igUserId,
+        instagramUserId: igUserId,
+        accessToken: longLivedToken,
+        pageId: undefined,
+        pageAccessToken: undefined,
+        profilePicture: "",
+        isActive: true,
+      } as any;
+      await storage.createAccount(accountData);
+
+      res.redirect("/accounts");
+    } catch (error: any) {
+      console.error("Instagram OAuth callback error:", error?.response?.data || error);
+      res.status(500).send("OAuth failed");
     }
   });
 
