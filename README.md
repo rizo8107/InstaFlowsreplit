@@ -2,20 +2,29 @@
 
 A comprehensive web-based Instagram automation platform for managing multiple Instagram accounts with visual drag-and-drop flow builder.
 
-> 📖 **[View Complete Installation Guide →](./INSTALLATION_GUIDE.md)**
+> 🚀 **[Quick Start with Docker Compose →](./DEPLOY.md)** | 📖 **[Complete Documentation →](./INSTALLATION_GUIDE.md)**
 
 ## ✨ Features
 
+### Core Features
 - 🎨 **Visual Flow Builder** - Drag-and-drop interface for creating automation workflows
 - 📱 **Multi-Account Support** - Manage multiple Instagram accounts from one dashboard
 - 🎯 **Smart Triggers** - Comment, DM, Mention, and Story Reply triggers
 - 🔀 **Condition Logic** - Complex if/else conditions with AND/OR operators
-- ⚡ **Actions** - Reply, DM, delete, hide, like, send links, API calls, delays
+- ⚡ **Actions** - Reply, DM, delete, hide, like, send links, API calls, delays, AI agents
 - 🎬 **Media Filtering** - Visual media picker to target specific posts/reels
 - 📊 **Activity Logging** - Track all executions with success/failure status
 - 📚 **Template Library** - 12 pre-built automation templates
 - 🔐 **User Authentication** - Secure login and session management
 - 📞 **Contacts Management** - Auto-save Instagram user contacts
+
+### 🆕 New Features
+- ✨ **Auto Webhook Subscription** - Automatically subscribes webhooks when connecting accounts
+- 🔧 **Webhook Management API** - Subscribe, unsubscribe, and check webhook status
+- 📋 **Diagnostic Dashboard** - Real-time system health and execution monitoring
+- 🧪 **Manual Flow Trigger** - Test flows without real Instagram webhooks
+- 🐳 **Docker Compose Deployment** - One-command deployment with auto-migration
+- 🏥 **Health Check API** - Monitor system status programmatically
 
 ## 🚀 Quick Start
 
@@ -23,11 +32,29 @@ A comprehensive web-based Instagram automation platform for managing multiple In
 
 | Method | Difficulty | Best For | Documentation |
 |--------|-----------|----------|---------------|
+| **Docker Compose** | ⭐ Easy | Local dev, self-hosting, production | [DEPLOY.md](./DEPLOY.md) **← NEW!** |
 | **Replit** | ⭐ Easy | Quick deployment, beginners | [One-click publish](#) |
 | **Easypanel** | ⭐⭐ Medium | Production, self-hosting | [EASYPANEL.md](./EASYPANEL.md) |
 | **VPS/Cloud** | ⭐⭐⭐ Advanced | Custom infrastructure | [INSTALLATION_GUIDE.md](./INSTALLATION_GUIDE.md) |
 
+### 🆕 Deploy with Docker Compose (Recommended)
+
+**Windows:**
+```powershell
+.\setup.ps1
+docker-compose up -d
+```
+
+**Linux/Mac:**
+```bash
+chmod +x setup.sh && ./setup.sh
+docker-compose up -d
+```
+
+➡️ **[Complete Docker Compose Guide](./DEPLOY.md)**
+
 ### Deploy on Replit (Easiest - 1-Click)
+
 
 1. Click **Publish** button
 2. App goes live instantly

@@ -1,6 +1,42 @@
+# Dependencies
 node_modules
+npm-debug.log
+yarn-error.log
+
+# Build output
 dist
+build
+
+# Environment files
+.env
+.env.local
+.env.*.local
+secrets.txt
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Server files
 server/public
+
+# Logs
+logs
+*.log
+
+# Database
+postgres-data
+*.db
+*.sqlite
+
+# Misc
 vite.config.ts.*
 *.tar.gz
+.cache

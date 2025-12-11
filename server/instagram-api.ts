@@ -68,7 +68,7 @@ export class InstagramAPI {
   async replyToComment(commentId: string, message: string): Promise<any> {
     try {
       console.log(`[InstagramAPI] Replying to comment ${commentId} with message: ${message}`);
-      
+
       const response = await axios.post(
         `${GRAPH_API_BASE}/${commentId}/replies`,
         {
@@ -86,10 +86,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error replying to comment:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -97,7 +97,7 @@ export class InstagramAPI {
   async deleteComment(commentId: string): Promise<any> {
     try {
       console.log(`[InstagramAPI] Deleting comment ${commentId}`);
-      
+
       const response = await axios.delete(`${GRAPH_API_BASE}/${commentId}`, {
         params: {
           access_token: this.accessToken,
@@ -109,10 +109,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error deleting comment:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -120,7 +120,7 @@ export class InstagramAPI {
   async hideComment(commentId: string): Promise<any> {
     try {
       console.log(`[InstagramAPI] Hiding comment ${commentId}`);
-      
+
       const response = await axios.post(
         `${GRAPH_API_BASE}/${commentId}`,
         {
@@ -138,10 +138,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error hiding comment:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -149,7 +149,7 @@ export class InstagramAPI {
   async getMedia(mediaId: string): Promise<InstagramMedia> {
     try {
       console.log(`[InstagramAPI] Fetching media ${mediaId}`);
-      
+
       const response = await axios.get(`${GRAPH_API_BASE}/${mediaId}`, {
         params: {
           access_token: this.accessToken,
@@ -162,10 +162,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error fetching media:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -173,7 +173,7 @@ export class InstagramAPI {
   async getUserMedia(limit: number = 25): Promise<{ data: InstagramMedia[] }> {
     try {
       console.log(`[InstagramAPI] Fetching user media (limit: ${limit})`);
-      
+
       const response = await axios.get(`${GRAPH_API_BASE}/${this.instagramUserId}/media`, {
         params: {
           access_token: this.accessToken,
@@ -187,10 +187,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error fetching user media:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -198,7 +198,7 @@ export class InstagramAPI {
   async likeComment(commentId: string): Promise<any> {
     try {
       console.log(`[InstagramAPI] Liking comment ${commentId}`);
-      
+
       const response = await axios.post(
         `${GRAPH_API_BASE}/${commentId}/likes`,
         {},
@@ -214,10 +214,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error liking comment:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -227,15 +227,15 @@ export class InstagramAPI {
     try {
       // Use Instagram Graph API v24.0 format: /<IG_ID>/messages with recipient.id
       const endpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
-      
+
       const requestBody = {
         recipient: { id: recipientId },
         message: { text: message }
       };
-      
+
       console.log(`[InstagramAPI] Sending DM to recipient ${recipientId} via ${endpoint}`);
       console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
-      
+
       const response = await axios.post(
         endpoint,
         requestBody,
@@ -254,23 +254,23 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error sending DM:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
 
   async sendButtonTemplate(
-    recipientId: string, 
-    title: string, 
+    recipientId: string,
+    title: string,
     subtitle: string | undefined,
-    buttons: Array<{type: 'web_url' | 'postback', title: string, url?: string, payload?: string}>
+    buttons: Array<{ type: 'web_url' | 'postback', title: string, url?: string, payload?: string }>
   ): Promise<any> {
     try {
       const endpoint = `${GRAPH_API_BASE}/${this.instagramUserId}/messages`;
-      
+
       const requestBody = {
         recipient: { id: recipientId },
         message: {
@@ -294,10 +294,10 @@ export class InstagramAPI {
           }
         }
       };
-      
+
       console.log(`[InstagramAPI] Sending button template to recipient ${recipientId}`);
       console.log(`[InstagramAPI] Request body:`, JSON.stringify(requestBody, null, 2));
-      
+
       const response = await axios.post(
         endpoint,
         requestBody,
@@ -316,10 +316,10 @@ export class InstagramAPI {
       const errorData = error.response?.data;
       const errorMessage = errorData?.error?.message || error.message || 'Unknown Instagram API error';
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error sending button template:`, errorDetails);
       console.error(`[InstagramAPI] Full error:`, error);
-      
+
       throw new Error(`Instagram API Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -358,9 +358,9 @@ export class InstagramAPI {
       const errorCode = errorData?.error?.code;
       const errorSubcode = errorData?.error?.error_subcode;
       const errorDetails = JSON.stringify(errorData || error.message);
-      
+
       console.error(`[InstagramAPI] Error sending Private Reply via IG endpoint:`, errorDetails);
-      
+
       // If IG endpoint fails, try Page endpoint as fallback
       if (this.pageId && this.pageAccessToken) {
         console.log(`[InstagramAPI] Retrying with Page endpoint...`);
@@ -393,12 +393,12 @@ export class InstagramAPI {
           console.error(`[InstagramAPI] Page endpoint also failed:`, pageError.response?.data || pageError.message);
         }
       }
-      
+
       // Error subcode 2534001: Thread owner has archived/deleted conversation or thread doesn't exist
       if (errorSubcode === 2534001) {
         throw new Error(`Private Reply failed: The conversation thread doesn't exist, was deleted, or was archived by the user. This can happen if: (1) the comment was deleted, (2) the user archived the conversation, or (3) trying to use Private Reply when a normal DM should be used instead. Error code: ${errorCode}, subcode: ${errorSubcode}`);
       }
-      
+
       throw new Error(`Private Reply Error: ${errorMessage} - Details: ${errorDetails}`);
     }
   }
@@ -420,9 +420,9 @@ export class InstagramAPI {
   async getConversationIdBySenderId(senderId: string): Promise<string | null> {
     try {
       console.log(`[InstagramAPI] Fetching conversation for sender ${senderId}`);
-      
+
       const conversations = await this.getConversations();
-      
+
       // Find conversation with this sender as a participant
       if (conversations.data && Array.isArray(conversations.data)) {
         for (const conv of conversations.data) {
@@ -435,7 +435,7 @@ export class InstagramAPI {
           }
         }
       }
-      
+
       console.log(`[InstagramAPI] No conversation found for sender ${senderId}`);
       return null;
     } catch (error: any) {
@@ -449,8 +449,8 @@ export class InstagramAPI {
     try {
       const media = await this.getMedia(mediaId);
       // Reels are identified by media_product_type = "REELS" or media_type = "VIDEO" with product type REELS
-      return media.media_product_type === 'REELS' || 
-             (media.media_type === 'VIDEO' && media.media_product_type === 'REELS');
+      return media.media_product_type === 'REELS' ||
+        (media.media_type === 'VIDEO' && media.media_product_type === 'REELS');
     } catch (error) {
       console.error(`[InstagramAPI] Error checking if media is Reel:`, error);
       return false;
@@ -483,5 +483,143 @@ export class InstagramAPI {
       }
     );
     return response.data;
+  }
+
+  // Webhook Subscription Management
+  /**
+   * Subscribe Instagram account to webhook fields
+   * @param appId - Facebook App ID
+   * @param callbackUrl - Webhook callback URL
+   * @param verifyToken - Webhook verify token
+   * @param fields - Array of webhook fields to subscribe (default: comments,messages,mentions,story_insights)
+   */
+  async subscribeToWebhooks(
+    appId: string,
+    callbackUrl: string,
+    verifyToken: string,
+    fields: string[] = ['comments', 'messages', 'mentions', 'story_insights']
+  ): Promise<{ success: boolean; subscribedFields: string[]; errors: string[] }> {
+    const results: { success: boolean; subscribedFields: string[]; errors: string[] } = {
+      success: true,
+      subscribedFields: [],
+      errors: []
+    };
+
+    console.log(`[InstagramAPI] Subscribing Instagram account ${this.instagramUserId} to webhooks`);
+    console.log(`[InstagramAPI] Fields: ${fields.join(', ')}`);
+    console.log(`[InstagramAPI] Callback URL: ${callbackUrl}`);
+
+    // Subscribe to each field individually
+    for (const field of fields) {
+      try {
+        const endpoint = `https://graph.facebook.com/v24.0/${this.instagramUserId}/subscribed_apps`;
+
+        const response = await axios.post(
+          endpoint,
+          {
+            subscribed_fields: field,
+          },
+          {
+            params: {
+              access_token: this.accessToken,
+            },
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        console.log(`[InstagramAPI] Successfully subscribed to ${field}:`, response.data);
+        results.subscribedFields.push(field);
+      } catch (error: any) {
+        const errorData = error.response?.data;
+        const errorMessage = errorData?.error?.message || error.message || 'Unknown error';
+        const errorDetails = JSON.stringify(errorData || error.message);
+
+        console.error(`[InstagramAPI] Failed to subscribe to ${field}:`, errorDetails);
+        results.errors.push(`${field}: ${errorMessage}`);
+        results.success = false;
+      }
+    }
+
+    // Also subscribe the app to Instagram object webhooks
+    try {
+      const appEndpoint = `https://graph.facebook.com/v24.0/${appId}/subscriptions`;
+
+      const appResponse = await axios.post(
+        appEndpoint,
+        {
+          object: 'instagram',
+          callback_url: callbackUrl,
+          verify_token: verifyToken,
+          fields: fields.join(','),
+        },
+        {
+          params: {
+            access_token: this.accessToken,
+          },
+        }
+      );
+
+      console.log(`[InstagramAPI] App subscribed to Instagram webhooks:`, appResponse.data);
+    } catch (error: any) {
+      // This might fail if webhook is already configured - not critical
+      console.warn(`[InstagramAPI] App webhook subscription warning:`, error.response?.data || error.message);
+    }
+
+    return results;
+  }
+
+  /**
+   * Unsubscribe Instagram account from webhook fields
+   */
+  async unsubscribeFromWebhooks(): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log(`[InstagramAPI] Unsubscribing Instagram account ${this.instagramUserId} from webhooks`);
+
+      const endpoint = `https://graph.facebook.com/v24.0/${this.instagramUserId}/subscribed_apps`;
+
+      const response = await axios.delete(endpoint, {
+        params: {
+          access_token: this.accessToken,
+        },
+      });
+
+      console.log(`[InstagramAPI] Successfully unsubscribed from webhooks:`, response.data);
+      return { success: true, message: 'Unsubscribed successfully' };
+    } catch (error: any) {
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error?.message || error.message || 'Unknown error';
+
+      console.error(`[InstagramAPI] Failed to unsubscribe from webhooks:`, errorData || error.message);
+      return { success: false, message: errorMessage };
+    }
+  }
+
+  /**
+   * Check current webhook subscriptions for this Instagram account
+   */
+  async getWebhookSubscriptions(): Promise<{ subscriptions: string[]; error?: string }> {
+    try {
+      const endpoint = `https://graph.facebook.com/v24.0/${this.instagramUserId}/subscribed_apps`;
+
+      const response = await axios.get(endpoint, {
+        params: {
+          access_token: this.accessToken,
+        },
+      });
+
+      const subscriptions = response.data?.data || [];
+      const subscribedFields = subscriptions.flatMap((sub: any) =>
+        sub.subscribed_fields || []
+      );
+
+      console.log(`[InstagramAPI] Current webhook subscriptions:`, subscribedFields);
+      return { subscriptions: subscribedFields };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error?.message || error.message;
+      console.error(`[InstagramAPI] Failed to get webhook subscriptions:`, error.response?.data || error.message);
+      return { subscriptions: [], error: errorMessage };
+    }
   }
 }

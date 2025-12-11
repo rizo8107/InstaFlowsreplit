@@ -1,5 +1,5 @@
-import { 
-  type InstagramAccount, 
+import {
+  type InstagramAccount,
   type InsertInstagramAccount,
   type Flow,
   type InsertFlow,
@@ -53,7 +53,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
+  // Health Check
+  healthCheck(): Promise<boolean>;
+
   // Session Store
   sessionStore: session.Store;
 
@@ -179,6 +182,17 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // Health Check
+  async healthCheck(): Promise<boolean> {
+    try {
+      await db.select().from(users).limit(1);
+      return true;
+    } catch (error) {
+      console.error('[HealthCheck] Database connection failed:', error);
+      return false;
+    }
+  }
+
   // Instagram Accounts
   async getAccount(id: string): Promise<InstagramAccount | undefined> {
     const [account] = await db.select().from(instagramAccounts).where(eq(instagramAccounts.id, id));
@@ -218,7 +232,7 @@ export class DatabaseStorage implements IStorage {
   async deleteAccount(id: string): Promise<boolean> {
     // Delete associated flows (cascading)
     await db.delete(flows).where(eq(flows.accountId, id));
-    
+
     const result = await db.delete(instagramAccounts).where(eq(instagramAccounts.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
@@ -261,7 +275,7 @@ export class DatabaseStorage implements IStorage {
   async deleteFlow(id: string): Promise<boolean> {
     // Delete associated executions (cascading)
     await db.delete(flowExecutions).where(eq(flowExecutions.flowId, id));
-    
+
     const result = await db.delete(flows).where(eq(flows.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
@@ -365,7 +379,7 @@ export class DatabaseStorage implements IStorage {
   async incrementTemplateUseCount(id: string): Promise<boolean> {
     const template = await this.getTemplate(id);
     if (!template) return false;
-    
+
     const newCount = (parseInt(template.useCount) + 1).toString();
     const [updated] = await db
       .update(flowTemplates)
@@ -426,7 +440,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertContact(accountId: string, instagramUserId: string, username?: string): Promise<Contact> {
     const existingContact = await this.getContactByInstagramUserId(accountId, instagramUserId);
-    
+
     if (existingContact) {
       if (username && existingContact.username !== username) {
         const updated = await this.updateContact(existingContact.id, { username });
@@ -501,7 +515,7 @@ export class DatabaseStorage implements IStorage {
   async incrementAgentTemplateUseCount(id: string): Promise<boolean> {
     const template = await this.getAgentTemplate(id);
     if (!template) return false;
-    
+
     const newCount = String(Number(template.useCount) + 1);
     await db
       .update(agentTemplates)

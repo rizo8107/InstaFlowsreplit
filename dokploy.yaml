@@ -1,0 +1,114 @@
+name: instagram-automation
+description: Instagram Automation Platform with AI-powered workflows
+
+compose:
+  file: docker-compose.yml
+  
+environment:
+  # Auto-generated secrets (Dokploy will use these defaults)
+  - name: SESSION_SECRET
+    value: ${SESSION_SECRET:-change_this_to_random_64_char_hex}
+    description: Session encryption key - CHANGE THIS!
+    required: true
+    
+  - name: POSTGRES_PASSWORD
+    value: ${POSTGRES_PASSWORD:-change_this_secure_password}
+    description: PostgreSQL database password - CHANGE THIS!
+    required: true
+    
+  # Instagram/Facebook (MUST be set by user)
+  - name: INSTAGRAM_APP_ID
+    value: ${INSTAGRAM_APP_ID}
+    description: Instagram App ID from Meta for Developers
+    required: true
+    
+  - name: INSTAGRAM_APP_SECRET
+    value: ${INSTAGRAM_APP_SECRET}
+    description: Instagram App Secret from Meta for Developers
+    required: true
+    
+  - name: INSTAGRAM_WEBHOOK_VERIFY_TOKEN
+    value: ${INSTAGRAM_WEBHOOK_VERIFY_TOKEN:-zenthra_webhook_token}
+    description: Custom token for webhook verification
+    required: true
+    
+  - name: OAUTH_BASE_URL
+    value: ${OAUTH_BASE_URL}
+    description: Your public domain URL (e.g., https://instagram.yourdomain.com)
+    required: true
+    
+  # Optional - Facebook
+  - name: FACEBOOK_APP_ID
+    value: ${FACEBOOK_APP_ID:-}
+    description: Facebook App ID (optional)
+    required: false
+    
+  - name: FACEBOOK_APP_SECRET
+    value: ${FACEBOOK_APP_SECRET:-}
+    description: Facebook App Secret (optional)
+    required: false
+    
+  # Optional - AI Features
+  - name: GEMINI_API_KEY
+    value: ${GEMINI_API_KEY:-}
+    description: Google Gemini API key for AI agents (optional)
+    required: false
+    
+  # Auto-configured defaults
+  - name: AUTO_SUBSCRIBE_WEBHOOKS
+    value: "true"
+    description: Automatically subscribe to webhooks when accounts connect
+    required: false
+    
+  - name: WEBHOOK_FIELDS
+    value: comments,messages,mentions,story_insights
+    description: Webhook fields to subscribe to
+    required: false
+    
+  - name: POSTGRES_USER
+    value: postgres
+    description: PostgreSQL username
+    required: false
+    
+  - name: POSTGRES_DB
+    value: instagram_automation
+    description: PostgreSQL database name
+    required: false
+    
+  - name: POSTGRES_PORT
+    value: "5432"
+    description: PostgreSQL port
+    required: false
+    
+  - name: PORT
+    value: "5000"
+    description: Application port
+    required: false
+    
+  - name: NODE_ENV
+    value: production
+    description: Node environment
+    required: false
+
+domains:
+  - domain: ${DOMAIN_NAME}
+    certificateType: letsencrypt
+
+healthcheck:
+  enabled: true
+  path: /api/health
+  interval: 30
+  timeout: 10
+  retries: 3
+
+resources:
+  limits:
+    memory: 2Gi
+    cpu: "1"
+  requests:
+    memory: 512Mi
+    cpu: "0.5"
+
+autoDeploy:
+  enabled: true
+  branch: main
