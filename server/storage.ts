@@ -44,9 +44,7 @@ import {
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
-import createMemoryStore from "memorystore";
 
-const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
   // Users
@@ -154,12 +152,18 @@ export interface IStorage {
   deactivateAgentConversation(id: string): Promise<boolean>;
 }
 
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
+
+const PostgresSessionStore = connectPg(session);
+
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
